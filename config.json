@@ -1,0 +1,11 @@
+{
+  "host": "localhost",
+  "port": 8080,
+  "users": [
+    {
+      "id": 1,
+      "username": "user1",
+      "password": "pass1"
+    }
+  ]
+}
