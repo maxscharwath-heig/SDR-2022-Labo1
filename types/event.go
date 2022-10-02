@@ -1,8 +1,9 @@
 package types
 
 type Event struct {
-	id        int    `json:"id"`
-	name      string `json:"name"`
-	organizer User   `json:"organizer"`
-	jobs      []Job  `json:"jobs"`
+	Id        int    `json:"id"`
+	Name      string `json:"name"`
+	Organizer User   `json:"organizer"`
+	Jobs      []Job  `json:"jobs"`
+	Open      bool   `json:"open"`
 }
