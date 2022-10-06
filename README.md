@@ -1,6 +1,15 @@
 # SDR-Labo1
 Laboratoire 1
 
+## Installation
+
+
+## Utilisation
+
+Lancer le serveur:
+
+> `go run server.go`
+
 
 ## Tâches
 

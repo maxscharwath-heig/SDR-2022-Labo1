@@ -2,10 +2,9 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
+	"net"
 	"os"
-	"sdr/labo1/types"
 	"strings"
 )
 
@@ -22,17 +21,6 @@ func StringPrompt(label string) string {
 		}
 	}
 	return strings.TrimSpace(s)
-}
-
-func readConfig() {
-	file, _ := os.Open("config.json")
-	decoder := json.NewDecoder(file)
-	configuration := types.Configuration{}
-	err := decoder.Decode(&configuration)
-	if err != nil {
-		fmt.Println("error:", err)
-	}
-	fmt.Println(configuration)
 }
 
 func PrintWelcome() {
@@ -71,6 +59,8 @@ func ClientProcess() {
 	PrintWelcome()
 	PrintHelp()
 
+	connect("localhost", "9000")
+
 	for {
 		cmd := StringPrompt("Enter command [press h for help]:")
 
@@ -92,6 +82,9 @@ func ClientProcess() {
 			Authenticate(AskCredentials())
 		case "show":
 			fmt.Println("")
+
+		case "quit":
+			// quit server
 		default:
 			fmt.Println("Invalid command, try again")
 		}
@@ -99,7 +92,52 @@ func ClientProcess() {
 	}
 }
 
+func connect(srvAddr string, srvPort string) {
+
+	TestCmd := "blabla"
+
+	tcpAddr, err := net.ResolveTCPAddr("tcp", srvAddr+":"+srvPort)
+	if err != nil {
+		println("ResolveTCPAddr failed:", err.Error())
+		os.Exit(1)
+	}
+
+	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	if err != nil {
+		println("Dial failed:", err.Error())
+		os.Exit(1)
+	}
+
+	_, err = conn.Write([]byte(TestCmd))
+	if err != nil {
+		println("Write to server failed:", err.Error())
+		os.Exit(1)
+	}
+
+	println("write to server = ", TestCmd)
+
+	reply := make([]byte, 1024)
+
+	_, err = conn.Read(reply)
+	if err != nil {
+		println("Write to server failed:", err.Error())
+		os.Exit(1)
+	}
+
+	println("reply from server=", string(reply))
+
+	disconnect(conn)
+}
+
+func disconnect(conn net.Conn) {
+	if conn != nil {
+		err := conn.Close()
+		if err != nil {
+			return // error on close
+		}
+	}
+}
+
 func main() {
-	readConfig()
 	ClientProcess()
 }
