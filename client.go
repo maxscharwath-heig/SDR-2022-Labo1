@@ -102,12 +102,26 @@ func ClientProcess(configuration types.ClientConfiguration) {
 			println(ToJson(request))
 
 		case "close":
-			Authenticate()
-			fmt.Println("")
+			request := types.Request[int]{
+				Credentials: Authenticate(),
+				Data:        IntPrompt("Enter event id:"),
+			}
+			println(ToJson(request))
 		case "register":
-			Authenticate()
+			request := types.Request[types.Registration]{
+				Credentials: Authenticate(),
+				Data: types.Registration{
+					EventId: IntPrompt("Enter event id:"),
+					JobId:   IntPrompt("Enter job id:"),
+				},
+			}
+			println(ToJson(request))
 		case "show":
-			fmt.Println("")
+			request := types.Request[int]{
+				Credentials: Authenticate(),
+				Data:        IntPrompt("Enter event id:"),
+			}
+			println(ToJson(request))
 
 		case "quit":
 			// quit server
