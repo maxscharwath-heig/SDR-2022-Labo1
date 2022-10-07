@@ -36,15 +36,11 @@ func main() {
 
 // Handles incoming requests.
 func handleRequest(conn net.Conn) {
-	// Make a buffer to hold incoming data.
-	buf := make([]byte, 1024)
-	// Read the incoming connection into the buffer.
-	_, err := conn.Read(buf)
-	if err != nil {
-		fmt.Println("Error reading:", err.Error())
+	entryMessages := make(chan Message)
+	go ReceiveData(conn, entryMessages)
+	for {
+		data := <-entryMessages
+		fmt.Println("Message received:", data.Path, data.Body)
+		SendRequest(conn, data.Path, data.Body)
 	}
-	// Send a response back to person contacting us.
-	conn.Write([]byte("Welcome to the server !!"))
-	// Close the connection when you're done with it.
-	conn.Close()
 }

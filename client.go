@@ -82,21 +82,11 @@ func parseArgs(cmdRaw string) (string, []string, map[string]bool) {
 	return cmd, args, flags
 }
 
-func sendRequest(conn net.Conn, request string) {
-	_, err := conn.Write([]byte(request))
-	if err != nil {
-		fmt.Println("Error sending request:", err.Error())
-	}
-}
-
 func ClientProcess(configuration types.ClientConfiguration) {
 	PrintWelcome()
 	PrintHelp()
 
 	conn, entryMessages := connect(configuration.Type, configuration.FullUrl())
-
-	data := <-entryMessages
-	fmt.Println(data)
 
 	for {
 		cmd, args, flags := parseArgs(StringPrompt("Enter command [press h for help]:"))
@@ -127,14 +117,14 @@ func ClientProcess(configuration types.ClientConfiguration) {
 				jobs = append(jobs, job)
 			}
 			request.Data.Jobs = jobs
-			sendRequest(conn, ToJson(request))
+			SendRequest(conn, "create", request.ToJson())
 
 		case "close":
 			request := types.Request[int]{
 				Credentials: Authenticate(),
 				Data:        IntPrompt("Enter event id:"),
 			}
-			println(ToJson(request))
+			SendRequest(conn, "close", request.ToJson())
 		case "register":
 			request := types.Request[types.Registration]{
 				Credentials: Authenticate(),
@@ -143,7 +133,7 @@ func ClientProcess(configuration types.ClientConfiguration) {
 					JobId:   IntPrompt("Enter job id:"),
 				},
 			}
-			sendRequest(conn, ToJson(request))
+			SendRequest(conn, "register", request.ToJson())
 		case "show":
 			eventId := 0
 			if len(args) > 0 {
@@ -162,8 +152,9 @@ func ClientProcess(configuration types.ClientConfiguration) {
 					Resume:  flags["resume"],
 				},
 			}
-			sendRequest(conn, ToJson(request))
-
+			SendRequest(conn, "show", request.ToJson())
+			data := <-entryMessages
+			fmt.Println(data)
 		case "quit":
 			disconnect(conn)
 			return
@@ -174,24 +165,12 @@ func ClientProcess(configuration types.ClientConfiguration) {
 	}
 }
 
-func receive(conn net.Conn, entryMessages chan string) {
-	for {
-		buffer := make([]byte, 1024)
-		n, err := conn.Read(buffer)
-		if err != nil {
-			fmt.Println("Error receiving data:", err.Error())
-			return
-		}
-		entryMessages <- string(buffer[:n])
-	}
-}
-
-func connect(network string, address string) (*net.TCPConn, chan string) {
+func connect(network string, address string) (*net.TCPConn, chan Message) {
 	tcpAddr, _ := net.ResolveTCPAddr(network, address)
 	conn, _ := net.DialTCP("tcp", nil, tcpAddr)
 	//create channel to receive messages
-	entryMessages := make(chan string)
-	go receive(conn, entryMessages)
+	entryMessages := make(chan Message)
+	go ReceiveData(conn, entryMessages)
 	return conn, entryMessages
 }
 
