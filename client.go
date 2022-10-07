@@ -7,6 +7,7 @@ import (
 	"os"
 	. "sdr/labo1/core"
 	"sdr/labo1/types"
+	"strconv"
 	"strings"
 )
 
@@ -64,6 +65,23 @@ func Authenticate() types.Credentials {
 	}
 }
 
+func parseArgs(cmdRaw string) (string, []string, map[string]bool) {
+	parsed := strings.Split(cmdRaw, " ")
+	cmd := parsed[0]
+	var args []string
+	flags := make(map[string]bool)
+	for _, arg := range parsed[1:] {
+		if strings.HasPrefix(arg, "--") {
+			flags[strings.TrimPrefix(arg, "--")] = true
+		} else if strings.HasPrefix(arg, "-") {
+			flags[strings.TrimPrefix(arg, "-")] = true
+		} else {
+			args = append(args, arg)
+		}
+	}
+	return cmd, args, flags
+}
+
 func ClientProcess(configuration types.ClientConfiguration) {
 	PrintWelcome()
 	PrintHelp()
@@ -71,7 +89,7 @@ func ClientProcess(configuration types.ClientConfiguration) {
 	connect(configuration.Type, configuration.FullUrl())
 
 	for {
-		cmd := StringPrompt("Enter command [press h for help]:")
+		cmd, args, flags := parseArgs(StringPrompt("Enter command [press h for help]:"))
 
 		switch cmd {
 		case "h":
@@ -117,9 +135,22 @@ func ClientProcess(configuration types.ClientConfiguration) {
 			}
 			println(ToJson(request))
 		case "show":
-			request := types.Request[int]{
+			eventId := 0
+			if len(args) > 0 {
+				eventId, _ = strconv.Atoi(args[0])
+			} else {
+				eventId = -1
+			}
+			type ShowRequest struct {
+				EventId int
+				Resume  bool
+			}
+			request := types.Request[ShowRequest]{
 				Credentials: Authenticate(),
-				Data:        IntPrompt("Enter event id:"),
+				Data: ShowRequest{
+					EventId: eventId,
+					Resume:  flags["resume"],
+				},
 			}
 			println(ToJson(request))
 
