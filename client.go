@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+	. "sdr/labo1/core"
+	"sdr/labo1/types"
 	"strings"
 )
 
@@ -55,11 +57,11 @@ func Authenticate(username string, password string) {
 	// TODO: auth to the server
 }
 
-func ClientProcess() {
+func ClientProcess(configuration types.ClientConfiguration) {
 	PrintWelcome()
 	PrintHelp()
 
-	connect("localhost", "9000")
+	connect(configuration.Type, configuration.FullUrl())
 
 	for {
 		cmd := StringPrompt("Enter command [press h for help]:")
@@ -92,11 +94,11 @@ func ClientProcess() {
 	}
 }
 
-func connect(srvAddr string, srvPort string) {
+func connect(network string, address string) {
 
 	TestCmd := "blabla"
 
-	tcpAddr, err := net.ResolveTCPAddr("tcp", srvAddr+":"+srvPort)
+	tcpAddr, err := net.ResolveTCPAddr(network, address)
 	if err != nil {
 		println("ResolveTCPAddr failed:", err.Error())
 		os.Exit(1)
@@ -139,5 +141,6 @@ func disconnect(conn net.Conn) {
 }
 
 func main() {
-	ClientProcess()
+	config := ReadConfig("config/client.json", types.ClientConfiguration{})
+	ClientProcess(config)
 }

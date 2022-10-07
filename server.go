@@ -1,29 +1,16 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net"
 	"os"
+	. "sdr/labo1/core"
 	"sdr/labo1/types"
 )
 
-func readConfig() types.ServerConfiguration {
-	file, _ := os.Open("config/server.json")
-	decoder := json.NewDecoder(file)
-	configuration := types.ServerConfiguration{}
-	err := decoder.Decode(&configuration)
-	file.Close()
-	if err != nil {
-		fmt.Println("error:", err)
-	}
-
-	return configuration
-}
-
 func main() {
 	// Listen for incoming connections.
-	config := readConfig()
+	config := ReadConfig("config/server.json", &types.ServerConfiguration{})
 
 	l, err := net.Listen(config.Type, config.FullUrl())
 	if err != nil {
