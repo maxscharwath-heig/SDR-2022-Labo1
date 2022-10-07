@@ -132,12 +132,7 @@ func connect(network string, address string) {
 }
 
 func disconnect(conn net.Conn) {
-	if conn != nil {
-		err := conn.Close()
-		if err != nil {
-			return // error on close
-		}
-	}
+	conn.Close()
 }
 
 func main() {
