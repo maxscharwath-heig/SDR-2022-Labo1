@@ -57,18 +57,11 @@ func PrintHelp() {
 	fmt.Println("_________________________")
 }
 
-// AskCredentials gets the user input for its credential, validates them and returns them
-func AskCredentials() (string, string) {
-	username := StringPrompt("Enter your username:")
-	password := StringPrompt("Enter your password:") // TODO: hide echo while typing password
-
-	// TODO: validate inputs
-
-	return username, password
-}
-
-func Authenticate(username string, password string) {
-	// TODO: auth to the server
+func Authenticate() types.Credentials {
+	return types.Credentials{
+		Username: StringPrompt("Enter username:"),
+		Password: StringPrompt("Enter password:"),
+	}
 }
 
 func ClientProcess(configuration types.ClientConfiguration) {
@@ -84,9 +77,11 @@ func ClientProcess(configuration types.ClientConfiguration) {
 		case "h":
 			PrintHelp()
 		case "create":
-			Authenticate(AskCredentials())
-			event := types.Event{
-				Name: StringPrompt("Enter event name:"),
+			request := types.Request[types.Event]{
+				Credentials: Authenticate(),
+				Data: types.Event{
+					Name: StringPrompt("Enter event name:"),
+				},
 			}
 			jobsMap := make(map[string]types.Job)
 			for {
@@ -103,14 +98,14 @@ func ClientProcess(configuration types.ClientConfiguration) {
 			for _, job := range jobsMap {
 				jobs = append(jobs, job)
 			}
-			event.Jobs = jobs
-			println(event.ToJson())
+			request.Data.Jobs = jobs
+			println(ToJson(request))
 
 		case "close":
-			Authenticate(AskCredentials())
+			Authenticate()
 			fmt.Println("")
 		case "register":
-			Authenticate(AskCredentials())
+			Authenticate()
 		case "show":
 			fmt.Println("")
 
