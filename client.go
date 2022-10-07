@@ -16,13 +16,27 @@ func StringPrompt(label string) string {
 	var s string
 	r := bufio.NewReader(os.Stdin)
 	for {
-		fmt.Fprint(os.Stderr, label+" ")
+		println(label + " ")
 		s, _ = r.ReadString('\n')
 		if s != "" {
 			break
 		}
 	}
 	return strings.TrimSpace(s)
+}
+
+// IntPrompt asks for an int value using the label
+func IntPrompt(label string) int {
+	var i int
+	r := bufio.NewReader(os.Stdin)
+	for {
+		println(label + " ")
+		_, err := fmt.Fscan(r, &i)
+		if err == nil {
+			break
+		}
+	}
+	return i
 }
 
 func PrintWelcome() {
@@ -71,11 +85,26 @@ func ClientProcess(configuration types.ClientConfiguration) {
 			PrintHelp()
 		case "create":
 			Authenticate(AskCredentials())
-
-			// TODO
-			name := StringPrompt("    Enter event name:")
-			jobs := StringPrompt("    Enter jobs: [name, number of slots]")
-			fmt.Println(name, jobs)
+			event := types.Event{
+				Name: StringPrompt("Enter event name:"),
+			}
+			jobsMap := make(map[string]types.Job)
+			for {
+				job := types.Job{
+					Name:     StringPrompt("Enter job name:"),
+					Capacity: IntPrompt("Enter job capacity:"),
+				}
+				jobsMap[job.Name] = job
+				if StringPrompt("Add another job? [y/n]") == "n" {
+					break
+				}
+			}
+			jobs := make([]types.Job, len(jobsMap))
+			for _, job := range jobsMap {
+				jobs = append(jobs, job)
+			}
+			event.Jobs = jobs
+			println(event.ToJson())
 
 		case "close":
 			Authenticate(AskCredentials())
