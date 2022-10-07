@@ -82,11 +82,21 @@ func parseArgs(cmdRaw string) (string, []string, map[string]bool) {
 	return cmd, args, flags
 }
 
+func sendRequest(conn net.Conn, request string) {
+	_, err := conn.Write([]byte(request))
+	if err != nil {
+		fmt.Println("Error sending request:", err.Error())
+	}
+}
+
 func ClientProcess(configuration types.ClientConfiguration) {
 	PrintWelcome()
 	PrintHelp()
 
-	connect(configuration.Type, configuration.FullUrl())
+	conn, entryMessages := connect(configuration.Type, configuration.FullUrl())
+
+	data := <-entryMessages
+	fmt.Println(data)
 
 	for {
 		cmd, args, flags := parseArgs(StringPrompt("Enter command [press h for help]:"))
@@ -117,7 +127,7 @@ func ClientProcess(configuration types.ClientConfiguration) {
 				jobs = append(jobs, job)
 			}
 			request.Data.Jobs = jobs
-			println(ToJson(request))
+			sendRequest(conn, ToJson(request))
 
 		case "close":
 			request := types.Request[int]{
@@ -133,7 +143,7 @@ func ClientProcess(configuration types.ClientConfiguration) {
 					JobId:   IntPrompt("Enter job id:"),
 				},
 			}
-			println(ToJson(request))
+			sendRequest(conn, ToJson(request))
 		case "show":
 			eventId := 0
 			if len(args) > 0 {
@@ -152,10 +162,11 @@ func ClientProcess(configuration types.ClientConfiguration) {
 					Resume:  flags["resume"],
 				},
 			}
-			println(ToJson(request))
+			sendRequest(conn, ToJson(request))
 
 		case "quit":
-			// quit server
+			disconnect(conn)
+			return
 		default:
 			fmt.Println("Invalid command, try again")
 		}
@@ -163,41 +174,25 @@ func ClientProcess(configuration types.ClientConfiguration) {
 	}
 }
 
-func connect(network string, address string) {
-
-	TestCmd := "blabla"
-
-	tcpAddr, err := net.ResolveTCPAddr(network, address)
-	if err != nil {
-		println("ResolveTCPAddr failed:", err.Error())
-		os.Exit(1)
+func receive(conn net.Conn, entryMessages chan string) {
+	for {
+		buffer := make([]byte, 1024)
+		n, err := conn.Read(buffer)
+		if err != nil {
+			fmt.Println("Error receiving data:", err.Error())
+			return
+		}
+		entryMessages <- string(buffer[:n])
 	}
+}
 
-	conn, err := net.DialTCP("tcp", nil, tcpAddr)
-	if err != nil {
-		println("Dial failed:", err.Error())
-		os.Exit(1)
-	}
-
-	_, err = conn.Write([]byte(TestCmd))
-	if err != nil {
-		println("Write to server failed:", err.Error())
-		os.Exit(1)
-	}
-
-	println("write to server = ", TestCmd)
-
-	reply := make([]byte, 1024)
-
-	_, err = conn.Read(reply)
-	if err != nil {
-		println("Write to server failed:", err.Error())
-		os.Exit(1)
-	}
-
-	println("reply from server=", string(reply))
-
-	disconnect(conn)
+func connect(network string, address string) (*net.TCPConn, chan string) {
+	tcpAddr, _ := net.ResolveTCPAddr(network, address)
+	conn, _ := net.DialTCP("tcp", nil, tcpAddr)
+	//create channel to receive messages
+	entryMessages := make(chan string)
+	go receive(conn, entryMessages)
+	return conn, entryMessages
 }
 
 func disconnect(conn net.Conn) {
