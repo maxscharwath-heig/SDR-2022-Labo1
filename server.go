@@ -13,6 +13,7 @@ func readConfig() types.ServerConfiguration {
 	decoder := json.NewDecoder(file)
 	configuration := types.ServerConfiguration{}
 	err := decoder.Decode(&configuration)
+	file.Close()
 	if err != nil {
 		fmt.Println("error:", err)
 	}
