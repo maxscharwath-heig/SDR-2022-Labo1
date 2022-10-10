@@ -1,11 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"net"
-	"os"
 	. "sdr/labo1/core"
+	"sdr/labo1/network"
 	"sdr/labo1/types"
 	"strconv"
 	"strings"
@@ -15,10 +14,23 @@ import (
 // TODO: add boolean param to remove echo
 func StringPrompt(label string) string {
 	var s string
-	r := bufio.NewReader(os.Stdin)
 	for {
-		println(label + " ")
-		s, _ = r.ReadString('\n')
+		fmt.Print(label + " ")
+		fmt.Scanln(&s)
+		if s != "" {
+			break
+		}
+	}
+	return strings.TrimSpace(s)
+}
+
+func PassPrompt(label string) string {
+	var s string
+	for {
+		fmt.Print(label + " ")
+		fmt.Print("\033[8m")
+		fmt.Scanln(&s)
+		fmt.Print("\033[28m")
 		if s != "" {
 			break
 		}
@@ -29,10 +41,9 @@ func StringPrompt(label string) string {
 // IntPrompt asks for an int value using the label
 func IntPrompt(label string) int {
 	var i int
-	r := bufio.NewReader(os.Stdin)
 	for {
-		println(label + " ")
-		_, err := fmt.Fscan(r, &i)
+		fmt.Print(label + " ")
+		_, err := fmt.Scanln(&i)
 		if err == nil {
 			break
 		}
@@ -61,7 +72,7 @@ func PrintHelp() {
 func Authenticate() types.Credentials {
 	return types.Credentials{
 		Username: StringPrompt("Enter username:"),
-		Password: StringPrompt("Enter password:"),
+		Password: PassPrompt("Enter password:"),
 	}
 }
 
@@ -95,7 +106,7 @@ func ClientProcess(configuration types.ClientConfiguration) {
 		case "h":
 			PrintHelp()
 		case "create":
-			request := types.Request[types.Event]{
+			request := network.Request[types.Event]{
 				Credentials: Authenticate(),
 				Data: types.Event{
 					Name: StringPrompt("Enter event name:"),
@@ -117,23 +128,23 @@ func ClientProcess(configuration types.ClientConfiguration) {
 				jobs = append(jobs, job)
 			}
 			request.Data.Jobs = jobs
-			SendRequest(conn, "create", request.ToJson())
+			network.SendRequest(conn, "create", request)
 
 		case "close":
-			request := types.Request[int]{
+			request := network.Request[int]{
 				Credentials: Authenticate(),
 				Data:        IntPrompt("Enter event id:"),
 			}
-			SendRequest(conn, "close", request.ToJson())
+			network.SendRequest(conn, "close", request)
 		case "register":
-			request := types.Request[types.Registration]{
+			request := network.Request[types.Registration]{
 				Credentials: Authenticate(),
 				Data: types.Registration{
 					EventId: IntPrompt("Enter event id:"),
 					JobId:   IntPrompt("Enter job id:"),
 				},
 			}
-			SendRequest(conn, "register", request.ToJson())
+			network.SendRequest(conn, "register", request)
 		case "show":
 			eventId := 0
 			if len(args) > 0 {
@@ -145,16 +156,18 @@ func ClientProcess(configuration types.ClientConfiguration) {
 				EventId int
 				Resume  bool
 			}
-			request := types.Request[ShowRequest]{
-				Credentials: Authenticate(),
+			request := network.Request[ShowRequest]{
 				Data: ShowRequest{
 					EventId: eventId,
 					Resume:  flags["resume"],
 				},
 			}
-			SendRequest(conn, "show", request.ToJson())
+			network.SendRequest(conn, "show", request)
+			fmt.Println("Waiting for response...")
 			data := <-entryMessages
-			fmt.Println(data)
+			body := network.FromJson[any](data.Body)
+			fmt.Println(body)
+
 		case "quit":
 			disconnect(conn)
 			return
@@ -165,12 +178,12 @@ func ClientProcess(configuration types.ClientConfiguration) {
 	}
 }
 
-func connect(network string, address string) (*net.TCPConn, chan Message) {
-	tcpAddr, _ := net.ResolveTCPAddr(network, address)
+func connect(protocol string, address string) (*net.TCPConn, chan network.Message) {
+	tcpAddr, _ := net.ResolveTCPAddr(protocol, address)
 	conn, _ := net.DialTCP("tcp", nil, tcpAddr)
 	//create channel to receive messages
-	entryMessages := make(chan Message)
-	go ReceiveData(conn, entryMessages)
+	entryMessages := make(chan network.Message)
+	go network.HandleReceiveData(conn, entryMessages)
 	return conn, entryMessages
 }
 

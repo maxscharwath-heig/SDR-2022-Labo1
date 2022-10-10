@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	. "sdr/labo1/core"
+	. "sdr/labo1/network"
 	"sdr/labo1/types"
 )
 
@@ -37,10 +38,12 @@ func main() {
 // Handles incoming requests.
 func handleRequest(conn net.Conn) {
 	entryMessages := make(chan Message)
-	go ReceiveData(conn, entryMessages)
+	go HandleReceiveData(conn, entryMessages)
 	for {
 		data := <-entryMessages
-		fmt.Println("Message received:", data.Path, data.Body)
-		SendRequest(conn, data.Path, data.Body)
+		fmt.Println("Message received:", data.Path, data.Body, conn.RemoteAddr())
+		body := FromJson[any](data.Body)
+		fmt.Println(body)
+		SendData(conn, data.Path, data.Body)
 	}
 }
