@@ -9,6 +9,9 @@ import (
 	"sdr/labo1/types"
 )
 
+type ChanData struct {
+}
+
 func main() {
 	// Listen for incoming connections.
 	config := ReadConfig("config/server.json", &types.ServerConfiguration{})
@@ -22,6 +25,10 @@ func main() {
 	defer l.Close()
 
 	fmt.Println("Listening on " + config.FullUrl())
+
+	//init chan data structure
+	chanData := ChanData{}
+
 	for {
 		// Listen for an incoming connection.
 		conn, err := l.Accept()
@@ -31,12 +38,12 @@ func main() {
 		}
 		// Handle connections in a new goroutine.
 		fmt.Println("New connexion !")
-		go handleRequest(conn)
+		go handleRequest(conn, chanData)
 	}
 }
 
 // Handles incoming requests.
-func handleRequest(conn net.Conn) {
+func handleRequest(conn net.Conn, data ChanData) {
 	entryMessages := make(chan Message)
 	go HandleReceiveData(conn, entryMessages)
 	for {
