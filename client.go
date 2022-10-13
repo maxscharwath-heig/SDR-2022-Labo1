@@ -2,62 +2,55 @@ package main
 
 import (
 	"fmt"
+	"golang.org/x/term"
 	"net"
 	. "sdr/labo1/core"
 	"sdr/labo1/network"
 	"sdr/labo1/types"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
-// StringPrompt asks for a string value using the label
-// TODO: add boolean param to remove echo
-func StringPrompt(label string) string {
-	var s string
+func stringPrompt(label string) string {
 	for {
 		fmt.Print(label + " ")
-		fmt.Scanln(&s)
-		if s != "" {
-			break
-		}
-	}
-	return strings.TrimSpace(s)
-}
-
-func PassPrompt(label string) string {
-	var s string
-	for {
-		fmt.Print(label + " ")
-		fmt.Print("\033[8m")
-		fmt.Scanln(&s)
-		fmt.Print("\033[28m")
-		if s != "" {
-			break
-		}
-	}
-	return strings.TrimSpace(s)
-}
-
-// IntPrompt asks for an int value using the label
-func IntPrompt(label string) int {
-	var i int
-	for {
-		fmt.Print(label + " ")
-		_, err := fmt.Scanln(&i)
+		var input string
+		_, err := fmt.Scanln(&input)
 		if err == nil {
-			break
+			return strings.TrimSpace(input)
 		}
 	}
-	return i
 }
 
-func PrintWelcome() {
+func passPrompt(label string) string {
+	fmt.Print(label + " ")
+	pass, _ := term.ReadPassword(int(syscall.Stdin))
+	fmt.Println("****")
+	return string(pass)
+}
+
+// intPrompt asks for an int value using the label
+func intPrompt(label string) int {
+	for {
+		fmt.Print(label + " ")
+		var input string
+		_, err := fmt.Scanln(&input)
+		if err == nil {
+			if i, err := strconv.Atoi(input); err == nil {
+				return i
+			}
+		}
+	}
+}
+
+func printWelcome() {
 	fmt.Println("\n   _____ ____  ____ \n  / ___// __ \\/ __ \\\n  \\__ \\/ / / / /_/ /\n ___/ / /_/ / _, _/ \n/____/_____/_/ |_|")
 	fmt.Println("Welcome to the SDR-Labo1 client")
 	fmt.Println("")
 }
 
-func PrintHelp() {
+func printHelp() {
 	fmt.Println("Please type the wished command")
 	fmt.Println("List of commands:")
 	fmt.Println("- create")
@@ -69,10 +62,10 @@ func PrintHelp() {
 	fmt.Println("_________________________")
 }
 
-func Authenticate() types.Credentials {
+func authenticate() types.Credentials {
 	return types.Credentials{
-		Username: StringPrompt("Enter username:"),
-		Password: PassPrompt("Enter password:"),
+		Username: stringPrompt("Enter username:"),
+		Password: passPrompt("Enter password:"),
 	}
 }
 
@@ -93,33 +86,33 @@ func parseArgs(cmdRaw string) (string, []string, map[string]bool) {
 	return cmd, args, flags
 }
 
-func ClientProcess(configuration types.ClientConfiguration) {
-	PrintWelcome()
-	PrintHelp()
+func clientProcess(configuration types.ClientConfiguration) {
+	printWelcome()
+	printHelp()
 
 	conn, entryMessages := connect(configuration.Type, configuration.FullUrl())
 
 	for {
-		cmd, args, flags := parseArgs(StringPrompt("Enter command [press h for help]:"))
+		cmd, args, flags := parseArgs(stringPrompt("Enter command [press h for help]:"))
 
 		switch cmd {
 		case "h":
-			PrintHelp()
+			printHelp()
 		case "create":
 			request := network.Request[types.Event]{
-				Credentials: Authenticate(),
+				Credentials: authenticate(),
 				Data: types.Event{
-					Name: StringPrompt("Enter event name:"),
+					Name: stringPrompt("Enter event name:"),
 				},
 			}
 			jobsMap := make(map[string]types.Job)
 			for {
 				job := types.Job{
-					Name:     StringPrompt("Enter job name:"),
-					Capacity: IntPrompt("Enter job capacity:"),
+					Name:     stringPrompt("Enter job name:"),
+					Capacity: intPrompt("Enter job capacity:"),
 				}
 				jobsMap[job.Name] = job
-				if StringPrompt("Add another job? [y/n]") == "n" {
+				if stringPrompt("Add another job? [y/n]") == "n" {
 					break
 				}
 			}
@@ -132,16 +125,16 @@ func ClientProcess(configuration types.ClientConfiguration) {
 
 		case "close":
 			request := network.Request[int]{
-				Credentials: Authenticate(),
-				Data:        IntPrompt("Enter event id:"),
+				Credentials: authenticate(),
+				Data:        intPrompt("Enter event id:"),
 			}
 			network.SendRequest(conn, "close", request)
 		case "register":
 			request := network.Request[types.Registration]{
-				Credentials: Authenticate(),
+				Credentials: authenticate(),
 				Data: types.Registration{
-					EventId: IntPrompt("Enter event id:"),
-					JobId:   IntPrompt("Enter job id:"),
+					EventId: intPrompt("Enter event id:"),
+					JobId:   intPrompt("Enter job id:"),
 				},
 			}
 			network.SendRequest(conn, "register", request)
@@ -193,5 +186,5 @@ func disconnect(conn net.Conn) {
 
 func main() {
 	config := ReadConfig("config/client.json", types.ClientConfiguration{})
-	ClientProcess(config)
+	clientProcess(config)
 }
