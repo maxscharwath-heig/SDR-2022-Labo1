@@ -10,6 +10,7 @@ import (
 )
 
 type ChanData struct {
+	users chan []types.User
 }
 
 func main() {
@@ -27,7 +28,12 @@ func main() {
 	fmt.Println("Listening on " + config.FullUrl())
 
 	//init chan data structure
-	chanData := ChanData{}
+	chanData := ChanData{
+		users: make(chan []types.User),
+	}
+	go func() {
+		chanData.users <- config.Users
+	}()
 
 	for {
 		// Listen for an incoming connection.
