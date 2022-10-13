@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"strings"
 )
 
 type Message struct {
@@ -21,9 +22,13 @@ func SendData(conn net.Conn, path string, body string) {
 }
 
 func HandleReceiveData(conn net.Conn, entryMessages chan Message) {
+	reader := bufio.NewReader(conn)
 	for {
-		path, _ := bufio.NewReader(conn).ReadString('\n')
-		body, _ := bufio.NewReader(conn).ReadString('\n')
-		entryMessages <- Message{path[:len(path)-1], body[:len(body)-1]}
+		path, ePath := reader.ReadString('\n')
+		body, eBody := reader.ReadString('\n')
+		if ePath != nil || eBody != nil {
+			break
+		}
+		entryMessages <- Message{strings.Trim(path, "\n"), strings.Trim(body, "\n")}
 	}
 }

@@ -5,7 +5,7 @@ import (
 	"net"
 	"os"
 	. "sdr/labo1/core"
-	. "sdr/labo1/network"
+	"sdr/labo1/network"
 	"sdr/labo1/types"
 )
 
@@ -44,13 +44,13 @@ func main() {
 
 // Handles incoming requests.
 func handleRequest(conn net.Conn, data ChanData) {
-	entryMessages := make(chan Message)
-	go HandleReceiveData(conn, entryMessages)
+	entryMessages := make(chan network.Message)
+
+	//NEED TO REFACTOR THIS (NOT USE GOROUTINE)
+	go network.HandleReceiveData(conn, entryMessages)
 	for {
 		data := <-entryMessages
-		fmt.Println("Message received:", data.Path, data.Body, conn.RemoteAddr())
-		body := FromJson[any](data.Body)
-		fmt.Println(body)
-		SendData(conn, data.Path, data.Body)
+		fmt.Println("path: " + data.Path)
+		fmt.Println("body: " + data.Body)
 	}
 }
