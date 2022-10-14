@@ -37,95 +37,93 @@ func main() {
 	chanData.users <- config.Users
 	chanData.events <- config.Events
 
+	protocol := network.ServerProtocol{
+		AuthFunc: func(credential types.Credentials) (bool, any) {
+			users := <-chanData.users
+			defer func() {
+				chanData.users <- users
+			}()
+			if credential.Username == "" || credential.Password == "" {
+				return false, nil
+			}
+			for _, user := range users {
+				if user.Username == credential.Username && user.Password == credential.Password {
+					return true, &user
+				}
+			}
+			return false, nil
+		},
+		Endpoints: []network.Endpoint{
+			createEndpoint(chanData),
+			showEndpoint(chanData),
+		},
+	}
+
 	for {
-		// Listen for an incoming connection.
 		conn, err := l.Accept()
 		if err != nil {
 			fmt.Println("Error accepting: ", err.Error())
 			os.Exit(1)
 		}
-		// Handle connections in a new goroutine.
 		fmt.Println("New connexion !")
-		go handleRequest(conn, chanData)
+		go protocol.Process(conn)
 	}
 }
 
-// Handles incoming requests.
-func handleRequest(conn net.Conn, data ChanData) {
-	entryMessages := make(chan network.Message)
+func createEndpoint(chanData ChanData) network.Endpoint {
+	return network.Endpoint{
+		Path:      "create",
+		NeedsAuth: true,
+		HandlerFunc: func(request network.Request) any {
+			events := <-chanData.events
+			defer func() {
+				chanData.events <- events
+			}()
 
-	//NEED TO REFACTOR THIS (NOT USE GOROUTINE)
-	go network.HandleReceiveData(conn, entryMessages)
-	for {
-		msg := <-entryMessages
-		switch msg.Path {
-		case "create":
-			create(conn, msg, data)
-		case "show":
-			show(conn, msg, data)
-		}
-	}
-}
+			data := dto.EventCreate{}
+			request.GetJson(&data)
 
-func handleAuth(credential types.Credentials, data ChanData) (types.User, error) {
-	users := <-data.users
-	defer func() {
-		data.users <- users
-	}()
-	if credential.Username == "" || credential.Password == "" {
-		return types.User{}, fmt.Errorf("invalid credentials")
-	}
-	for _, user := range users {
-		if user.Username == credential.Username && user.Password == credential.Password {
-			return user, nil
-		}
-	}
-	return types.User{}, fmt.Errorf("user not found")
-}
-
-// Handles creating of new Events.
-func create(conn net.Conn, message network.Message, data ChanData) {
-	request := network.RequestFromJson[types.Event](message.Body)
-	user, err := handleAuth(request.Credentials, data)
-	if err != nil {
-		network.SendData(conn, message.Path, err.Error())
-		return
-	}
-	events := <-data.events
-	defer func() {
-		data.events <- events
-	}()
-
-	event := request.Data
-	event.Id = len(events) + 1
-	event.SetOrganizer(user)
-	for i, job := range event.Jobs {
-		job.Id = i + 1
-	}
-	events = append(events, event)
-
-	network.SendResponse(conn, message.Path, network.Response[types.Event]{true, event})
-}
-
-func show(conn net.Conn, message network.Message, data ChanData) {
-	request := network.RequestFromJson[dto.EventShow](message.Body)
-	eventId := request.Data.EventId
-
-	events := <-data.events
-	defer func() {
-		data.events <- events
-	}()
-
-	if eventId != -1 {
-		for _, ev := range events {
-			if ev.Id == eventId {
-				network.SendResponse(conn, message.Path, network.Response[types.Event]{true, ev})
-				return
+			event := types.Event{
+				Id:        len(events) + 1,
+				Name:      data.Name,
+				Open:      true,
+				Organizer: request.Auth.(*types.User),
 			}
-		}
-		network.SendResponse(conn, message.Path, network.Response[[]types.Event]{false, nil})
-		return
+			for i, job := range data.Jobs {
+				event.Jobs = append(event.Jobs, types.Job{
+					Id:       i + 1,
+					Name:     job.Name,
+					Capacity: job.Capacity,
+				})
+			}
+			events = append(events, event)
+			return event
+		},
 	}
+}
 
-	network.SendResponse(conn, message.Path, network.Response[[]types.Event]{true, events})
+func showEndpoint(chanData ChanData) network.Endpoint {
+	return network.Endpoint{
+		Path:      "show",
+		NeedsAuth: false,
+		HandlerFunc: func(request network.Request) any {
+			events := <-chanData.events
+			defer func() {
+				chanData.events <- events
+			}()
+
+			data := dto.EventShow{}
+			request.GetJson(&data)
+
+			if data.EventId != -1 {
+				for _, ev := range events {
+					if ev.Id == data.EventId {
+						return ev
+					}
+				}
+				return nil
+			}
+			return events
+		},
+	}
 }

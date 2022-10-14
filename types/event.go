@@ -3,18 +3,11 @@ package types
 import "fmt"
 
 type Event struct {
-	Id          int    `json:"id"`
-	Name        string `json:"name"`
-	OrganizerId int    `json:"organizer_id"`
-	Jobs        []Job  `json:"jobs"`
-	Open        bool   `json:"open"`
-	Organizer   User   `json:"organizer"`
-}
-
-// SetOrganizer set the organizer of the event
-func (event *Event) SetOrganizer(organizer User) {
-	event.Organizer = organizer
-	event.OrganizerId = organizer.Id
+	Id        int    `json:"id"`
+	Name      string `json:"name"`
+	Jobs      []Job  `json:"jobs"`
+	Open      bool   `json:"open"`
+	Organizer *User  `json:"organizer"`
 }
 
 // ToRow gets a representation of an event to a table-printable format

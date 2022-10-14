@@ -21,7 +21,6 @@ func stringPrompt(label string) string {
 		fmt.Print(label + " ")
 		reader := bufio.NewReader(os.Stdin)
 		input, err := reader.ReadString('\n')
-
 		if err == nil {
 			return strings.TrimSpace(input)
 		}
@@ -30,7 +29,7 @@ func stringPrompt(label string) string {
 
 func passPrompt(label string) string {
 	fmt.Print(label + " ")
-	pass, _ := term.ReadPassword(syscall.Stdin)
+	pass, _ := term.ReadPassword(int(syscall.Stdin))
 	fmt.Println("****")
 	return string(pass)
 }
@@ -74,11 +73,11 @@ func parseArgs(cmdRaw string) (string, []string, map[string]bool) {
 }
 
 func clientProcess(configuration types.ClientConfiguration) {
+	conn := connect(configuration.Type, configuration.FullUrl())
+	protocol := network.ClientProtocol{Conn: conn, AuthFunc: authenticate}
+
 	utils.PrintWelcome()
 	utils.PrintHelp()
-
-	conn, entryMessages := connect(configuration.Type, configuration.FullUrl())
-
 	for {
 		cmd, args, flags := parseArgs(stringPrompt("Enter command [press h for help]:"))
 
@@ -86,47 +85,41 @@ func clientProcess(configuration types.ClientConfiguration) {
 		case "h":
 			utils.PrintHelp()
 		case "create":
-			request := network.Request[dto.EventCreate]{
-				Credentials: authenticate(),
-				Data: dto.EventCreate{
+			fmt.Println(protocol.SendRequest("create", func(auth any) any {
+				event := dto.EventCreate{
 					Name: stringPrompt("Enter event name:"),
-				},
-			}
-			jobsMap := make(map[string]dto.Job)
-			for {
-				job := dto.Job{
-					Name:     stringPrompt("Enter job name:"),
-					Capacity: intPrompt("Enter job capacity:"),
 				}
-				jobsMap[job.Name] = job
-				if stringPrompt("Add another job? [y/n]") == "n" {
-					break
+				jobsMap := make(map[string]dto.Job)
+				for {
+					job := dto.Job{
+						Name:     stringPrompt("Enter job name:"),
+						Capacity: intPrompt("Enter job capacity:"),
+					}
+					jobsMap[job.Name] = job
+					if stringPrompt("Add another job? [y/n]") == "n" {
+						break
+					}
 				}
-			}
-			jobs := make([]dto.Job, len(jobsMap))
-			for _, job := range jobsMap {
-				jobs = append(jobs, job)
-			}
-			request.Data.Jobs = jobs
-			network.SendRequest(conn, "create", request)
-
+				jobs := make([]dto.Job, len(jobsMap))
+				for _, job := range jobsMap {
+					jobs = append(jobs, job)
+				}
+				event.Jobs = jobs
+				return event
+			}))
 		case "close":
-			request := network.Request[dto.EventClose]{
-				Credentials: authenticate(),
-				Data: dto.EventClose{
+			fmt.Println(protocol.SendRequest("close", func(auth any) any {
+				return dto.EventClose{
 					EventId: intPrompt("Enter event id:"),
-				},
-			}
-			network.SendRequest(conn, "close", request)
+				}
+			}))
 		case "register":
-			request := network.Request[dto.EventRegister]{
-				Credentials: authenticate(),
-				Data: dto.EventRegister{
+			fmt.Println(protocol.SendRequest("register", func(auth any) any {
+				return dto.EventRegister{
 					EventId: intPrompt("Enter event id:"),
 					JobId:   intPrompt("Enter job id:"),
-				},
-			}
-			network.SendRequest(conn, "register", request)
+				}
+			}))
 		case "show":
 			eventId := 0
 			if len(args) > 0 {
@@ -134,28 +127,21 @@ func clientProcess(configuration types.ClientConfiguration) {
 			} else {
 				eventId = -1
 			}
-
-			request := network.Request[dto.EventShow]{
-				Data: dto.EventShow{
+			response, _ := protocol.SendRequest("show", func(auth any) any {
+				return dto.EventShow{
 					EventId: eventId,
 					Resume:  flags["resume"],
-				},
-			}
-			network.SendRequest(conn, "show", request)
-			data := <-entryMessages
-
+				}
+			})
 			if eventId != -1 {
-				body := network.RequestFromJson[types.Event](data.Body)
 				if flags["resume"] {
-					displayEventFromIdResume(body.Data)
+					displayEventFromIdResume(utils.FromJson[types.Event](response))
 				} else {
-					displayEventFromId(body.Data)
+					displayEventFromId(utils.FromJson[types.Event](response))
 				}
 			} else {
-				body := network.RequestFromJson[[]types.Event](data.Body)
-				displayEvents(body.Data)
+				displayEvents(utils.FromJson[[]types.Event](response))
 			}
-
 		case "quit":
 			disconnect(conn)
 			return
@@ -166,13 +152,14 @@ func clientProcess(configuration types.ClientConfiguration) {
 	}
 }
 
-func connect(protocol string, address string) (*net.TCPConn, chan network.Message) {
+func connect(protocol string, address string) *net.TCPConn {
 	tcpAddr, _ := net.ResolveTCPAddr(protocol, address)
-	conn, _ := net.DialTCP("tcp", nil, tcpAddr)
-	//create channel to receive messages
-	entryMessages := make(chan network.Message)
-	go network.HandleReceiveData(conn, entryMessages)
-	return conn, entryMessages
+	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	if err != nil {
+		fmt.Println("Error connecting to server")
+		os.Exit(1)
+	}
+	return conn
 }
 
 func disconnect(conn net.Conn) {
