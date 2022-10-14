@@ -53,9 +53,9 @@ func main() {
 			}
 			return false, nil
 		},
-		Endpoints: []network.Endpoint{
-			createEndpoint(&chanData),
-			showEndpoint(&chanData),
+		Endpoints: map[string]network.Endpoint{
+			"create": createEndpoint(&chanData),
+			"show":   showEndpoint(&chanData),
 		},
 	}
 
@@ -65,14 +65,12 @@ func main() {
 			fmt.Println("Error accepting: ", err.Error())
 			os.Exit(1)
 		}
-		fmt.Println("New connexion !")
 		go protocol.Process(conn)
 	}
 }
 
 func createEndpoint(chanData *ChanData) network.Endpoint {
 	return network.Endpoint{
-		Path:      "create",
 		NeedsAuth: true,
 		HandlerFunc: func(request network.Request) any {
 			events := <-chanData.events
@@ -104,7 +102,6 @@ func createEndpoint(chanData *ChanData) network.Endpoint {
 
 func showEndpoint(chanData *ChanData) network.Endpoint {
 	return network.Endpoint{
-		Path:      "show",
 		NeedsAuth: false,
 		HandlerFunc: func(request network.Request) any {
 			events := <-chanData.events

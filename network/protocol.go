@@ -34,7 +34,6 @@ func (r Request) GetJson(data any) {
 }
 
 type Endpoint struct {
-	Path        string
 	NeedsAuth   bool
 	HandlerFunc func(request Request) any
 }
@@ -44,10 +43,14 @@ type connection struct {
 	reader *bufio.Reader
 }
 
+func (c connection) isClosed() bool {
+	_, err := c.reader.Peek(1)
+	return err != nil
+}
+
 func (c connection) sendData(data string) {
 	log("send", data)
 	fmt.Fprintln(c.conn, data)
-
 }
 
 func (c connection) sendJSON(data any) {
@@ -58,41 +61,54 @@ func (c connection) sendJSON(data any) {
 func (c connection) getLine() (string, error) {
 	data, err := c.reader.ReadString('\n')
 	data = strings.Trim(data, "\n")
-	log("recv", data)
+	log("recv", data, err)
 	return data, err
 }
 
-func (c connection) getJson(data any) {
-	jsonString, _ := c.getLine()
-	_ = json.Unmarshal([]byte(jsonString), data)
+func (c connection) getJson(data any) error {
+	jsonString, err1 := c.getLine()
+	if err1 != nil {
+		return err1
+	}
+	return json.Unmarshal([]byte(jsonString), data)
 }
 
 func (c connection) getHeader() HeaderResponse {
 	var header HeaderResponse
-	c.getJson(&header)
+	_ = c.getJson(&header)
 	return header
 }
 
 type ServerProtocol struct {
 	AuthFunc  AuthFunc
-	Endpoints []Endpoint
+	Endpoints map[string]Endpoint
 }
 
 func (p ServerProtocol) Process(c net.Conn) {
-	conn := connection{c, bufio.NewReader(c)}
+	log("new connection", c.RemoteAddr())
+	defer func() {
+		log("close connection", c.RemoteAddr())
+		_ = c.Close()
+	}()
+
+	conn := connection{
+		conn:   c,
+		reader: bufio.NewReader(c),
+	}
 	for {
+		if conn.isClosed() {
+			break
+		}
+
 		request := Request{}
 		request.Path, _ = conn.getLine()
 
-		var endpoint *Endpoint
-		for _, e := range p.Endpoints {
-			if e.Path == request.Path {
-				request.Header.Valid = true
-				request.Header.NeedsAuth = e.NeedsAuth
-				endpoint = &e
-				break
-			}
+		endpoint, ok := p.Endpoints[request.Path]
+		if ok {
+			request.Header.Valid = true
+			request.Header.NeedsAuth = endpoint.NeedsAuth
 		}
+
 		conn.sendJSON(request.Header)
 
 		if !request.Header.Valid {
@@ -121,7 +137,10 @@ type ClientProtocol struct {
 }
 
 func (p ClientProtocol) SendRequest(path string, data func(auth any) any) (string, error) {
-	conn := connection{p.Conn, bufio.NewReader(p.Conn)}
+	conn := connection{
+		conn:   p.Conn,
+		reader: bufio.NewReader(p.Conn),
+	}
 	conn.sendData(path)
 	header := conn.getHeader()
 	if !header.Valid {
@@ -139,7 +158,7 @@ func (p ClientProtocol) SendRequest(path string, data func(auth any) any) (strin
 	return conn.getLine()
 }
 
-func log(prefix string, data any) {
+func log(prefix string, data ...any) {
 	date := time.Now().Format("2006-01-02 15:04:05")
 	color := "\033[33m"
 	reset := "\033[0m"
