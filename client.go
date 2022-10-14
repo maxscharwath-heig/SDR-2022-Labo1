@@ -100,7 +100,7 @@ func clientProcess(configuration types.ClientConfiguration) {
 						break
 					}
 				}
-				jobs := make([]dto.Job, len(jobsMap))
+				var jobs []dto.Job
 				for _, job := range jobsMap {
 					jobs = append(jobs, job)
 				}

@@ -34,7 +34,7 @@ func main() {
 		users:  make(chan []types.User, 1),
 		events: make(chan []types.Event, 1),
 	}
-	chanData.users <- config.Users
+	chanData.users <- config.GetUsers()
 	chanData.events <- config.Events
 
 	protocol := network.ServerProtocol{
