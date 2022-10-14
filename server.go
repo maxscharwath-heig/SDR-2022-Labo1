@@ -10,7 +10,8 @@ import (
 )
 
 type ChanData struct {
-	users chan []types.User
+	users  chan []types.User
+	events chan []types.Event
 }
 
 func main() {
@@ -29,9 +30,11 @@ func main() {
 
 	//init chan data structure
 	chanData := ChanData{
-		users: make(chan []types.User, 1),
+		users:  make(chan []types.User, 1),
+		events: make(chan []types.Event, 1),
 	}
 	chanData.users <- config.Users
+	chanData.events <- config.Events
 
 	for {
 		// Listen for an incoming connection.
@@ -57,6 +60,8 @@ func handleRequest(conn net.Conn, data ChanData) {
 		switch msg.Path {
 		case "create":
 			create(conn, msg, data)
+		case "show":
+			show(conn, msg, data)
 		}
 	}
 }
@@ -86,4 +91,19 @@ func create(conn net.Conn, message network.Message, data ChanData) {
 		return
 	}
 	network.SendData(conn, message.Path, user.Username)
+}
+
+func show(conn net.Conn, message network.Message, data ChanData) {
+	// request := network.FromJson[types.Event](message.Body)
+
+	// fmt.Println(request)
+
+	events := <-data.events
+	defer func() {
+		data.events <- events
+	}()
+
+	network.SendRequest(conn, message.Path, network.Request[any]{
+		Data: events,
+	})
 }

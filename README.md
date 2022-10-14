@@ -3,13 +3,14 @@ Laboratoire 1
 
 ## Installation
 
+`go get -d`
+
 
 ## Utilisation
 
 Lancer le serveur:
 
 > `go run server.go`
-
 
 ## Tâches
 
