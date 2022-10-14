@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	. "sdr/labo1/core"
+	"sdr/labo1/dto"
 	"sdr/labo1/network"
 	"sdr/labo1/types"
 )
@@ -107,14 +108,24 @@ func create(conn net.Conn, message network.Message, data ChanData) {
 }
 
 func show(conn net.Conn, message network.Message, data ChanData) {
-	// request := network.FromJson[types.Event](message.Body)
-
-	// fmt.Println(request)
+	request := network.RequestFromJson[dto.EventShow](message.Body)
+	eventId := request.Data.EventId
 
 	events := <-data.events
 	defer func() {
 		data.events <- events
 	}()
+
+	if eventId != -1 {
+		for _, ev := range events {
+			if ev.Id == eventId {
+				network.SendResponse(conn, message.Path, network.Response[types.Event]{true, ev})
+				return
+			}
+		}
+		network.SendResponse(conn, message.Path, network.Response[[]types.Event]{false, nil})
+		return
+	}
 
 	network.SendResponse(conn, message.Path, network.Response[[]types.Event]{true, events})
 }

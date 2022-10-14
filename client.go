@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"golang.org/x/term"
 	"net"
+	"os"
 	. "sdr/labo1/core"
 	"sdr/labo1/dto"
 	"sdr/labo1/network"
@@ -17,8 +19,9 @@ import (
 func stringPrompt(label string) string {
 	for {
 		fmt.Print(label + " ")
-		var input string
-		_, err := fmt.Scanln(&input)
+		reader := bufio.NewReader(os.Stdin)
+		input, err := reader.ReadString('\n')
+
 		if err == nil {
 			return strings.TrimSpace(input)
 		}
@@ -140,15 +143,16 @@ func clientProcess(configuration types.ClientConfiguration) {
 			}
 			network.SendRequest(conn, "show", request)
 			data := <-entryMessages
-			body := network.RequestFromJson[[]types.Event](data.Body)
 
-			if eventId > 0 {
+			if eventId != -1 {
+				body := network.RequestFromJson[types.Event](data.Body)
 				if flags["resume"] {
 					displayEventFromIdResume(body.Data)
 				} else {
 					displayEventFromId(body.Data)
 				}
 			} else {
+				body := network.RequestFromJson[[]types.Event](data.Body)
 				displayEvents(body.Data)
 			}
 
@@ -185,12 +189,15 @@ func displayEvents(events []types.Event) {
 	utils.PrintTable(headers, printableEventRow)
 }
 
-func displayEventFromId(events []types.Event) {
+func displayEventFromId(event types.Event) {
 	// TODO
+	fmt.Println(event.ToRow())
 }
 
-func displayEventFromIdResume(events []types.Event) {
+func displayEventFromIdResume(event types.Event) {
 	// TODO
+	fmt.Println(event.ToRow())
+	fmt.Println("RESUME")
 }
 
 func main() {

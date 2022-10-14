@@ -14,9 +14,9 @@ Lancer le serveur:
 
 ## Tâches
 
-- [ ] Fichier de configuration (port, utilisateurs (organisateur ou bénévole), manifestation)
-- [ ] CLI (client)
-- [ ] Message de bienvenue et d'aide (client)
+- [x] Fichier de configuration (port, utilisateurs (organisateur ou bénévole), manifestation)
+- [x] CLI (client)
+- [x] Message de bienvenue et d'aide (client)
 - [ ] Séléction de l'étape
    - [ ] Créer une manifestation (nom, username, password, nom des postes et nombre de bénévoles)
    - [ ] Cloturer une manifestation (numéro, username, password)
@@ -28,7 +28,7 @@ Lancer le serveur:
 
 Pas d'auth sur le listing
 
-- [ ] Lister toutes les manifestations (affiche: numéro, nom, nom organisateur, ouvert (oui /non))
+- [x] Lister toutes les manifestations (affiche: numéro, nom, nom organisateur, ouvert (oui /non))
 
 - [ ] Lister une manifestation (par numéro): afficher tous les postes (numéros, nom et nombre max de bénévoles)
 
