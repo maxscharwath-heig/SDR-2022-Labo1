@@ -31,9 +31,7 @@ func main() {
 	chanData := ChanData{
 		users: make(chan []types.User, 1),
 	}
-	go func() {
-		chanData.users <- config.Users
-	}()
+	chanData.users <- config.Users
 
 	for {
 		// Listen for an incoming connection.
@@ -56,14 +54,16 @@ func handleRequest(conn net.Conn, data ChanData) {
 	go network.HandleReceiveData(conn, entryMessages)
 	for {
 		msg := <-entryMessages
-		resp := network.FromJson[any](msg.Body)
-		fmt.Println("Received message: ", resp)
-		user, e := handleAuth(resp.Credentials, data)
-		if e != nil {
-			fmt.Println(e)
-			continue
+		switch msg.Path {
+		case "create":
+			request := network.FromJson[types.Event](msg.Body)
+			user, err := handleAuth(request.Credentials, data)
+			if err != nil {
+				network.SendData(conn, msg.Path, err.Error())
+				continue
+			}
+			network.SendData(conn, msg.Path, user.Username)
 		}
-		fmt.Println("User: ", user)
 	}
 }
 

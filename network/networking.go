@@ -29,6 +29,8 @@ func HandleReceiveData(conn net.Conn, entryMessages chan Message) {
 		if ePath != nil || eBody != nil {
 			break
 		}
-		entryMessages <- Message{strings.Trim(path, "\n"), strings.Trim(body, "\n")}
+		msg := Message{strings.Trim(path, "\n"), strings.Trim(body, "\n")}
+		fmt.Println("Received message: ", msg) //LOG
+		entryMessages <- msg
 	}
 }
