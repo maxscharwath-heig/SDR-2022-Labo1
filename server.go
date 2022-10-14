@@ -54,8 +54,8 @@ func main() {
 			return false, nil
 		},
 		Endpoints: []network.Endpoint{
-			createEndpoint(chanData),
-			showEndpoint(chanData),
+			createEndpoint(&chanData),
+			showEndpoint(&chanData),
 		},
 	}
 
@@ -70,7 +70,7 @@ func main() {
 	}
 }
 
-func createEndpoint(chanData ChanData) network.Endpoint {
+func createEndpoint(chanData *ChanData) network.Endpoint {
 	return network.Endpoint{
 		Path:      "create",
 		NeedsAuth: true,
@@ -102,7 +102,7 @@ func createEndpoint(chanData ChanData) network.Endpoint {
 	}
 }
 
-func showEndpoint(chanData ChanData) network.Endpoint {
+func showEndpoint(chanData *ChanData) network.Endpoint {
 	return network.Endpoint{
 		Path:      "show",
 		NeedsAuth: false,

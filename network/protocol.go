@@ -90,6 +90,7 @@ func (p ServerProtocol) Process(c net.Conn) {
 				request.Header.Valid = true
 				request.Header.NeedsAuth = e.NeedsAuth
 				endpoint = &e
+				break
 			}
 		}
 		conn.sendJSON(request.Header)
