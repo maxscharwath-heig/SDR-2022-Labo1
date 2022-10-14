@@ -56,13 +56,7 @@ func handleRequest(conn net.Conn, data ChanData) {
 		msg := <-entryMessages
 		switch msg.Path {
 		case "create":
-			request := network.FromJson[types.Event](msg.Body)
-			user, err := handleAuth(request.Credentials, data)
-			if err != nil {
-				network.SendData(conn, msg.Path, err.Error())
-				continue
-			}
-			network.SendData(conn, msg.Path, user.Username)
+			create(conn, msg, data)
 		}
 	}
 }
@@ -81,4 +75,15 @@ func handleAuth(credential types.Credentials, data ChanData) (types.User, error)
 		}
 	}
 	return types.User{}, fmt.Errorf("user not found")
+}
+
+// Handles creating of new Events.
+func create(conn net.Conn, message network.Message, data ChanData) {
+	request := network.FromJson[types.Event](message.Body)
+	user, err := handleAuth(request.Credentials, data)
+	if err != nil {
+		network.SendData(conn, message.Path, err.Error())
+		return
+	}
+	network.SendData(conn, message.Path, user.Username)
 }
