@@ -158,7 +158,7 @@ func clientProcess(configuration types.ClientConfiguration) {
 			network.SendRequest(conn, "show", request)
 			fmt.Println("Waiting for response...")
 			data := <-entryMessages
-			body := network.FromJson[any](data.Body)
+			body := network.RequestFromJson[any](data.Body)
 			fmt.Println(body)
 
 		case "quit":

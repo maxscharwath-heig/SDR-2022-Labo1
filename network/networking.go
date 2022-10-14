@@ -16,6 +16,10 @@ func SendRequest[T any](conn net.Conn, path string, body Request[T]) {
 	SendData(conn, path, body.ToJson())
 }
 
+func SendResponse[T any](conn net.Conn, path string, body Response[T]) {
+	SendData(conn, path, body.ToJson())
+}
+
 func SendData(conn net.Conn, path string, body string) {
 	fmt.Fprintln(conn, path)
 	fmt.Fprintln(conn, body)

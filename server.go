@@ -79,11 +79,11 @@ func handleAuth(credential types.Credentials, data ChanData) (types.User, error)
 
 // Handles creating of new Events.
 func create(conn net.Conn, message network.Message, data ChanData) {
-	request := network.FromJson[types.Event](message.Body)
+	request := network.RequestFromJson[types.Event](message.Body)
 	user, err := handleAuth(request.Credentials, data)
 	if err != nil {
 		network.SendData(conn, message.Path, err.Error())
 		return
 	}
-	network.SendData(conn, message.Path, user.Username)
+	network.SendResponse(conn, message.Path, network.Response[types.User]{true, user})
 }
