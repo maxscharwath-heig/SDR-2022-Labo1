@@ -5,6 +5,7 @@ import (
 	"golang.org/x/term"
 	"net"
 	. "sdr/labo1/core"
+	"sdr/labo1/dto"
 	"sdr/labo1/network"
 	"sdr/labo1/types"
 	"strconv"
@@ -99,15 +100,15 @@ func clientProcess(configuration types.ClientConfiguration) {
 		case "h":
 			printHelp()
 		case "create":
-			request := network.Request[types.Event]{
+			request := network.Request[dto.EventCreate]{
 				Credentials: authenticate(),
-				Data: types.Event{
+				Data: dto.EventCreate{
 					Name: stringPrompt("Enter event name:"),
 				},
 			}
-			jobsMap := make(map[string]types.Job)
+			jobsMap := make(map[string]dto.Job)
 			for {
-				job := types.Job{
+				job := dto.Job{
 					Name:     stringPrompt("Enter job name:"),
 					Capacity: intPrompt("Enter job capacity:"),
 				}
@@ -116,7 +117,7 @@ func clientProcess(configuration types.ClientConfiguration) {
 					break
 				}
 			}
-			jobs := make([]types.Job, len(jobsMap))
+			jobs := make([]dto.Job, len(jobsMap))
 			for _, job := range jobsMap {
 				jobs = append(jobs, job)
 			}
@@ -124,15 +125,17 @@ func clientProcess(configuration types.ClientConfiguration) {
 			network.SendRequest(conn, "create", request)
 
 		case "close":
-			request := network.Request[int]{
+			request := network.Request[dto.EventClose]{
 				Credentials: authenticate(),
-				Data:        intPrompt("Enter event id:"),
+				Data: dto.EventClose{
+					EventId: intPrompt("Enter event id:"),
+				},
 			}
 			network.SendRequest(conn, "close", request)
 		case "register":
-			request := network.Request[types.Registration]{
+			request := network.Request[dto.EventRegister]{
 				Credentials: authenticate(),
-				Data: types.Registration{
+				Data: dto.EventRegister{
 					EventId: intPrompt("Enter event id:"),
 					JobId:   intPrompt("Enter job id:"),
 				},
@@ -145,12 +148,9 @@ func clientProcess(configuration types.ClientConfiguration) {
 			} else {
 				eventId = -1
 			}
-			type ShowRequest struct {
-				EventId int
-				Resume  bool
-			}
-			request := network.Request[ShowRequest]{
-				Data: ShowRequest{
+
+			request := network.Request[dto.EventShow]{
+				Data: dto.EventShow{
 					EventId: eventId,
 					Resume:  flags["resume"],
 				},
