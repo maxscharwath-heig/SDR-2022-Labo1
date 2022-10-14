@@ -8,6 +8,7 @@ import (
 	"sdr/labo1/dto"
 	"sdr/labo1/network"
 	"sdr/labo1/types"
+	"sdr/labo1/utils"
 	"strconv"
 	"strings"
 	"syscall"
@@ -26,7 +27,7 @@ func stringPrompt(label string) string {
 
 func passPrompt(label string) string {
 	fmt.Print(label + " ")
-	pass, _ := term.ReadPassword(int(syscall.Stdin))
+	pass, _ := term.ReadPassword(syscall.Stdin)
 	fmt.Println("****")
 	return string(pass)
 }
@@ -43,24 +44,6 @@ func intPrompt(label string) int {
 			}
 		}
 	}
-}
-
-func printWelcome() {
-	fmt.Println("\n   _____ ____  ____ \n  / ___// __ \\/ __ \\\n  \\__ \\/ / / / /_/ /\n ___/ / /_/ / _, _/ \n/____/_____/_/ |_|")
-	fmt.Println("Welcome to the SDR-Labo1 client")
-	fmt.Println("")
-}
-
-func printHelp() {
-	fmt.Println("Please type the wished command")
-	fmt.Println("List of commands:")
-	fmt.Println("- create")
-	fmt.Println("- close")
-	fmt.Println("- register")
-	fmt.Println("- show")
-	fmt.Println("- show [number]")
-	fmt.Println("- show [number] --resume")
-	fmt.Println("_________________________")
 }
 
 func authenticate() types.Credentials {
@@ -88,8 +71,8 @@ func parseArgs(cmdRaw string) (string, []string, map[string]bool) {
 }
 
 func clientProcess(configuration types.ClientConfiguration) {
-	printWelcome()
-	printHelp()
+	utils.PrintWelcome()
+	utils.PrintHelp()
 
 	conn, entryMessages := connect(configuration.Type, configuration.FullUrl())
 
@@ -98,7 +81,7 @@ func clientProcess(configuration types.ClientConfiguration) {
 
 		switch cmd {
 		case "h":
-			printHelp()
+			utils.PrintHelp()
 		case "create":
 			request := network.Request[dto.EventCreate]{
 				Credentials: authenticate(),
@@ -156,10 +139,18 @@ func clientProcess(configuration types.ClientConfiguration) {
 				},
 			}
 			network.SendRequest(conn, "show", request)
-			fmt.Println("Waiting for response...")
 			data := <-entryMessages
-			body := network.RequestFromJson[any](data.Body)
-			fmt.Println(body)
+			body := network.RequestFromJson[[]types.Event](data.Body)
+
+			if eventId > 0 {
+				if flags["resume"] {
+					displayEventFromIdResume(body.Data)
+				} else {
+					displayEventFromId(body.Data)
+				}
+			} else {
+				displayEvents(body.Data)
+			}
 
 		case "quit":
 			disconnect(conn)
@@ -182,6 +173,24 @@ func connect(protocol string, address string) (*net.TCPConn, chan network.Messag
 
 func disconnect(conn net.Conn) {
 	conn.Close()
+}
+
+func displayEvents(events []types.Event) {
+	headers := []string{"Number", "Name", "Organizer name", "open"}
+	var printableEventRow []string
+	for _, event := range events {
+		printableEventRow = append(printableEventRow, event.ToRow())
+	}
+
+	utils.PrintTable(headers, printableEventRow)
+}
+
+func displayEventFromId(events []types.Event) {
+	// TODO
+}
+
+func displayEventFromIdResume(events []types.Event) {
+	// TODO
 }
 
 func main() {

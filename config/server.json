@@ -19,6 +19,10 @@
       "id": 1,
       "name": "Fête nationale",
       "organizerId": 1,
+      "organizer": {
+        "id": 1,
+        "username": "user1"
+      },
       "jobs": [
         {
           "id": 1,
@@ -36,7 +40,11 @@
     {
       "id": 2,
       "name": "Festival",
-      "organizerId": 1,
+      "organizerId": 2,
+      "organizer": {
+        "id": 2,
+        "username": "nicolas"
+      },
       "jobs": [
         {
           "id": 1,
