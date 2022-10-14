@@ -90,7 +90,20 @@ func create(conn net.Conn, message network.Message, data ChanData) {
 		network.SendData(conn, message.Path, err.Error())
 		return
 	}
-	network.SendResponse(conn, message.Path, network.Response[types.User]{true, user})
+	events := <-data.events
+	defer func() {
+		data.events <- events
+	}()
+
+	event := request.Data
+	event.Id = len(events) + 1
+	event.SetOrganizer(user)
+	for i, job := range event.Jobs {
+		job.Id = i + 1
+	}
+	events = append(events, event)
+
+	network.SendResponse(conn, message.Path, network.Response[types.Event]{true, event})
 }
 
 func show(conn net.Conn, message network.Message, data ChanData) {
@@ -103,7 +116,5 @@ func show(conn net.Conn, message network.Message, data ChanData) {
 		data.events <- events
 	}()
 
-	network.SendRequest(conn, message.Path, network.Request[any]{
-		Data: events,
-	})
+	network.SendResponse(conn, message.Path, network.Response[[]types.Event]{true, events})
 }
