@@ -29,7 +29,7 @@ func main() {
 
 	//init chan data structure
 	chanData := ChanData{
-		users: make(chan []types.User),
+		users: make(chan []types.User, 1),
 	}
 	go func() {
 		chanData.users <- config.Users
@@ -55,8 +55,30 @@ func handleRequest(conn net.Conn, data ChanData) {
 	//NEED TO REFACTOR THIS (NOT USE GOROUTINE)
 	go network.HandleReceiveData(conn, entryMessages)
 	for {
-		data := <-entryMessages
-		fmt.Println("path: " + data.Path)
-		fmt.Println("body: " + data.Body)
+		msg := <-entryMessages
+		resp := network.FromJson[any](msg.Body)
+		fmt.Println("Received message: ", resp)
+		user, e := handleAuth(resp.Credentials, data)
+		if e != nil {
+			fmt.Println(e)
+			continue
+		}
+		fmt.Println("User: ", user)
 	}
+}
+
+func handleAuth(credential types.Credentials, data ChanData) (types.User, error) {
+	users := <-data.users
+	defer func() {
+		data.users <- users
+	}()
+	if credential.Username == "" || credential.Password == "" {
+		return types.User{}, fmt.Errorf("invalid credentials")
+	}
+	for _, user := range users {
+		if user.Username == credential.Username && user.Password == credential.Password {
+			return user, nil
+		}
+	}
+	return types.User{}, fmt.Errorf("user not found")
 }
