@@ -41,11 +41,11 @@ func (config ServerConfiguration) GetData() (users []types.User, events []types.
 			Name:         event.Name,
 			Open:         event.Open,
 			Organizer:    types.FindUser(users, event.Organizer.Id),
-			Jobs:         make(map[int]types.Job),
+			Jobs:         make(map[int]*types.Job),
 			Participants: make(map[*types.User]*types.Job),
 		}
 		for _, job := range event.Jobs {
-			e.Jobs[job.Id] = types.Job{
+			e.Jobs[job.Id] = &types.Job{
 				Id:       job.Id,
 				Name:     job.Name,
 				Capacity: job.Capacity,

@@ -96,7 +96,7 @@ func createEndpoint(chanData *ChanData) network.Endpoint {
 			}
 			for i, job := range data.Jobs {
 				id := i + 1
-				event.Jobs[id] = types.Job{
+				event.Jobs[id] = &types.Job{
 					Id:       id,
 					Name:     job.Name,
 					Capacity: job.Capacity,

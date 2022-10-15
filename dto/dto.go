@@ -59,7 +59,7 @@ type EventShow struct {
 func EventToDTO(event types.Event) Event {
 	var jobs []types.Job
 	for _, job := range event.Jobs {
-		jobs = append(jobs, job)
+		jobs = append(jobs, *job)
 	}
 	participants := make([]Participant, 0)
 	for user, job := range event.Participants {
