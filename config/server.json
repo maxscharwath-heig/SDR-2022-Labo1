@@ -1,7 +1,8 @@
 {
-  "type": "tcp",
   "host": "localhost",
   "port": 9000,
+  "debug": false,
+  "showInfosLogs": true,
   "users": [
     {
       "id": 1,

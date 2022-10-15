@@ -3,9 +3,9 @@ package config
 import "fmt"
 
 type ClientConfiguration struct {
-	Type string `json:"type"`
-	Host string `json:"srvHost"`
-	Port int    `json:"srvPort"`
+	Host          string `json:"srvHost"`
+	Port          int    `json:"srvPort"`
+	ShowInfosLogs bool   `json:"showInfosLogs"`
 }
 
 func (config ClientConfiguration) FullUrl() string {

@@ -20,7 +20,7 @@ func main() {
 	// Listen for incoming connections.
 	config := ReadConfig("config/server.json", &config.ServerConfiguration{})
 
-	l, err := net.Listen(config.Type, config.FullUrl())
+	l, err := net.Listen("tcp", config.FullUrl())
 	if err != nil {
 		fmt.Println("Error listening:", err.Error())
 		os.Exit(1)

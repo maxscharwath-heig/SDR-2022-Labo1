@@ -1,5 +1,5 @@
 {
-  "type": "tcp",
   "srvHost": "localhost",
-  "srvPort": 9000
+  "srvPort": 9000,
+  "showInfosLogs": true
 }
