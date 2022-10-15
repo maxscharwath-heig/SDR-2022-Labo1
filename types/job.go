@@ -3,10 +3,10 @@ package types
 import "fmt"
 
 type Job struct {
-	Id           int     `json:"id"`
-	Name         string  `json:"name"`
-	Capacity     int     `json:"capacity"`
-	Participants []*User `json:"participants"`
+	Id       int    `json:"id"`
+	Name     string `json:"name"`
+	Capacity int    `json:"capacity"`
+	Count    int    `json:"count"`
 }
 
 func (job *Job) ToRow() string {

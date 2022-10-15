@@ -6,6 +6,7 @@ import (
 	"golang.org/x/term"
 	"net"
 	"os"
+	"sdr/labo1/config"
 	. "sdr/labo1/core"
 	"sdr/labo1/dto"
 	"sdr/labo1/network"
@@ -72,7 +73,7 @@ func parseArgs(cmdRaw string) (string, []string, map[string]bool) {
 	return cmd, args, flags
 }
 
-func clientProcess(configuration types.ClientConfiguration) {
+func clientProcess(configuration config.ClientConfiguration) {
 	conn := connect(configuration.Type, configuration.FullUrl())
 	protocol := network.ClientProtocol{Conn: conn, AuthFunc: authenticate}
 
@@ -135,7 +136,7 @@ func clientProcess(configuration types.ClientConfiguration) {
 			})
 
 			if eventId != -1 {
-				event := utils.FromJson[*types.Event](response)
+				event := utils.FromJson[*dto.Event](response)
 
 				if event == nil {
 					utils.LogError("This event does not exist")
@@ -148,7 +149,7 @@ func clientProcess(configuration types.ClientConfiguration) {
 					displayEventFromId(event)
 				}
 			} else {
-				displayEvents(utils.FromJson[[]types.Event](response))
+				displayEvents(utils.FromJson[[]dto.Event](response))
 			}
 		case "quit":
 			disconnect(conn)
@@ -174,7 +175,7 @@ func disconnect(conn net.Conn) {
 	conn.Close()
 }
 
-func displayEvents(events []types.Event) {
+func displayEvents(events []dto.Event) {
 	headers := []string{"Number", "Name", "Organizer name", "open"}
 	var printableEventRow []string
 	for _, event := range events {
@@ -184,7 +185,7 @@ func displayEvents(events []types.Event) {
 	utils.PrintTable(headers, printableEventRow)
 }
 
-func displayEventFromId(event *types.Event) {
+func displayEventFromId(event *dto.Event) {
 	if event == nil {
 		return
 	}
@@ -201,7 +202,7 @@ func displayEventFromId(event *types.Event) {
 	utils.PrintTable(headers, printableJobsRow)
 }
 
-func displayEventFromIdResume(event *types.Event) {
+func displayEventFromIdResume(event *dto.Event) {
 	if event == nil {
 		return
 	}
@@ -219,6 +220,6 @@ func displayEventFromIdResume(event *types.Event) {
 }
 
 func main() {
-	config := ReadConfig("config/client.json", types.ClientConfiguration{})
+	config := ReadConfig("config/client.json", config.ClientConfiguration{})
 	clientProcess(config)
 }

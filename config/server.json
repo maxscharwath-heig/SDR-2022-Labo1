@@ -18,10 +18,8 @@
     {
       "id": 1,
       "name": "Fête nationale",
-      "organizerId": 1,
       "organizer": {
-        "id": 1,
-        "username": "user1"
+        "id": 1
       },
       "jobs": [
         {
@@ -40,10 +38,8 @@
     {
       "id": 2,
       "name": "Festival",
-      "organizerId": 2,
       "organizer": {
-        "id": 2,
-        "username": "nicolas"
+        "id": 2
       },
       "jobs": [
         {

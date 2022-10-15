@@ -1,22 +1,32 @@
 package types
 
-import "fmt"
-
 type Event struct {
-	Id        int    `json:"id"`
-	Name      string `json:"name"`
-	Jobs      []Job  `json:"jobs"`
-	Open      bool   `json:"open"`
-	Organizer *User  `json:"organizer"`
+	Id           int
+	Name         string
+	Jobs         map[int]Job
+	Open         bool
+	Organizer    *User
+	Participants map[*User]*Job
 }
 
-// ToRow gets a representation of an event to a table-printable format
-func (event *Event) ToRow() string {
-	var openText string
-	if event.Open {
-		openText = "yes"
-	} else {
-		openText = "no"
+func (event *Event) Unregister(user *User) {
+	if job := event.Participants[user]; job != nil {
+		job.Count--
 	}
-	return fmt.Sprintf("%d\t%s\t%s\t%s", event.Id, event.Name, event.Organizer.Username, openText)
+	delete(event.Participants, user)
+}
+
+func (event *Event) Register(user *User, jobId int) bool {
+	if user == nil {
+		return false
+	}
+	if job, ok := event.Jobs[jobId]; ok {
+		if job.Count < job.Capacity {
+			event.Unregister(user)
+			event.Participants[user] = &job
+			job.Count++
+			return true
+		}
+	}
+	return false
 }
