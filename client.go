@@ -226,6 +226,7 @@ func displayEventFromIdResume(event *dto.Event) {
 }
 
 func main() {
-	config := ReadConfig("config/client.json", config.ClientConfiguration{})
-	clientProcess(config)
+	clientConfiguration := ReadConfig("client.json", config.ClientConfiguration{})
+	utils.SetEnabled(clientConfiguration.ShowInfosLogs)
+	clientProcess(clientConfiguration)
 }

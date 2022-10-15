@@ -2,18 +2,28 @@ package utils
 
 import (
 	"fmt"
+	"sdr/labo1/utils/colors"
 	"time"
 )
 
+var enabled = true
+
+func SetEnabled(enable bool) {
+	enabled = enable
+}
+
 func LogInfo(prefix string, data ...any) {
-	log(prefix, "\033[33m", "\033[0m", data)
+	Log(prefix, colors.Yellow, data)
 }
 
 func LogError(data ...any) {
-	log("error", "\033[1;31m", "\033[0m", data)
+	Log("error", colors.Red, data)
 }
 
-func log(prefix string, color string, reset string, data ...any) {
+func Log(prefix string, color string, data ...any) {
+	if !enabled {
+		return
+	}
 	date := time.Now().Format("2006-01-02 15:04:05")
-	fmt.Println(color, fmt.Sprintf("[%s] (%s):", date, prefix), reset, data)
+	fmt.Println(color, fmt.Sprintf("[%s] (%s):", date, prefix), colors.Reset, data)
 }

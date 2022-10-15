@@ -9,6 +9,7 @@ import (
 	"sdr/labo1/dto"
 	"sdr/labo1/network"
 	"sdr/labo1/types"
+	"sdr/labo1/utils"
 )
 
 type ChanData struct {
@@ -18,9 +19,11 @@ type ChanData struct {
 
 func main() {
 	// Listen for incoming connections.
-	config := ReadConfig("config/server.json", &config.ServerConfiguration{})
+	serverConfiguration := ReadConfig("server.json", &config.ServerConfiguration{})
 
-	l, err := net.Listen("tcp", config.FullUrl())
+	utils.SetEnabled(serverConfiguration.ShowInfosLogs)
+
+	l, err := net.Listen("tcp", serverConfiguration.FullUrl())
 	if err != nil {
 		fmt.Println("Error listening:", err.Error())
 		os.Exit(1)
@@ -28,7 +31,7 @@ func main() {
 	// Close the listener when the application closes.
 	defer l.Close()
 
-	fmt.Println("Listening on " + config.FullUrl())
+	fmt.Println("Listening on " + serverConfiguration.FullUrl())
 
 	//init chan data structure
 	chanData := ChanData{
@@ -37,7 +40,7 @@ func main() {
 	}
 
 	{ // LOAD DATA FROM CONFIG
-		users, events := config.GetData()
+		users, events := serverConfiguration.GetData()
 		chanData.users <- users
 		chanData.events <- events
 	}
