@@ -247,6 +247,7 @@ func formattedJobRow(username string, row []bool) []string {
 }
 
 func main() {
-	clientConfig := ReadConfig("config/client.json", config.ClientConfiguration{})
-	clientProcess(clientConfig)
+	clientConfiguration := ReadConfig("client.json", config.ClientConfiguration{})
+	utils.SetEnabled(clientConfiguration.ShowInfosLogs)
+	clientProcess(clientConfiguration)
 }
