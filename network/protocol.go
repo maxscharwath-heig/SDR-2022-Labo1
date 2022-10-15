@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net"
 	"sdr/labo1/types"
+	"sdr/labo1/utils"
 	"strings"
-	"time"
 )
 
 type HeaderResponse struct {
@@ -49,7 +49,7 @@ func (c connection) isClosed() bool {
 }
 
 func (c connection) sendData(data string) {
-	log("send", data)
+	utils.LogInfo("send", data)
 	fmt.Fprintln(c.conn, data)
 }
 
@@ -61,7 +61,7 @@ func (c connection) sendJSON(data any) {
 func (c connection) getLine() (string, error) {
 	data, err := c.reader.ReadString('\n')
 	data = strings.Trim(data, "\n")
-	log("recv", data, err)
+	utils.LogInfo("recv", data, err)
 	return data, err
 }
 
@@ -85,9 +85,9 @@ type ServerProtocol struct {
 }
 
 func (p ServerProtocol) Process(c net.Conn) {
-	log("new connection", c.RemoteAddr())
+	utils.LogInfo("new connection", c.RemoteAddr())
 	defer func() {
-		log("close connection", c.RemoteAddr())
+		utils.LogInfo("close connection", c.RemoteAddr())
 		_ = c.Close()
 	}()
 
@@ -156,11 +156,4 @@ func (p ClientProtocol) SendRequest(path string, data func(auth any) any) (strin
 	}
 	conn.sendJSON(data(authResponse.Auth))
 	return conn.getLine()
-}
-
-func log(prefix string, data ...any) {
-	date := time.Now().Format("2006-01-02 15:04:05")
-	color := "\033[33m"
-	reset := "\033[0m"
-	fmt.Println(color, fmt.Sprintf("[%s] (%s):", date, prefix), reset, data)
 }

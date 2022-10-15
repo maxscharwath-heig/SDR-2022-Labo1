@@ -133,11 +133,19 @@ func clientProcess(configuration types.ClientConfiguration) {
 					Resume:  flags["resume"],
 				}
 			})
+
 			if eventId != -1 {
+				event := utils.FromJson[*types.Event](response)
+
+				if event == nil {
+					utils.LogError("This event does not exist")
+					break
+				}
+
 				if flags["resume"] {
-					displayEventFromIdResume(utils.FromJson[types.Event](response))
+					displayEventFromIdResume(event)
 				} else {
-					displayEventFromId(utils.FromJson[types.Event](response))
+					displayEventFromId(event)
 				}
 			} else {
 				displayEvents(utils.FromJson[[]types.Event](response))
@@ -176,14 +184,37 @@ func displayEvents(events []types.Event) {
 	utils.PrintTable(headers, printableEventRow)
 }
 
-func displayEventFromId(event types.Event) {
-	// TODO
-	fmt.Println(event.ToRow())
+func displayEventFromId(event *types.Event) {
+	if event == nil {
+		return
+	}
+
+	fmt.Printf("Event #%d: %s \n", event.Id, event.Name)
+	fmt.Println("List of jobs:")
+
+	headers := []string{"Number", "Name", "Max capacity"}
+	var printableJobsRow []string
+	for _, job := range event.Jobs {
+		printableJobsRow = append(printableJobsRow, job.ToRow())
+	}
+
+	utils.PrintTable(headers, printableJobsRow)
 }
 
-func displayEventFromIdResume(event types.Event) {
-	// TODO
-	fmt.Println(event.ToRow())
+func displayEventFromIdResume(event *types.Event) {
+	if event == nil {
+		return
+	}
+	fmt.Printf("Event #%d: %s \n", event.Id, event.Name)
+
+	headers := []string{"Number", "Name", "Max capacity"}
+	var printableJobsRow []string
+	for _, job := range event.Jobs {
+		printableJobsRow = append(printableJobsRow, job.ToRow())
+	}
+
+	utils.PrintTable(headers, printableJobsRow)
+
 	fmt.Println("RESUME")
 }
 
