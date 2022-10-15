@@ -10,7 +10,7 @@ import (
 func PrintWelcome() {
 	fmt.Println("\n   _____ ____  ____ \n  / ___// __ \\/ __ \\\n  \\__ \\/ / / / /_/ /\n ___/ / /_/ / _, _/ \n/____/_____/_/ |_|")
 	fmt.Println("Welcome to the SDR-Labo1 client")
-	fmt.Println("")
+	fmt.Println("This client allows you to create & manage events")
 }
 
 func PrintHelp() {

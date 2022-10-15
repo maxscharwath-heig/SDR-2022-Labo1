@@ -73,7 +73,7 @@ func parseArgs(cmdRaw string) (string, []string, map[string]bool) {
 }
 
 func clientProcess(configuration types.ClientConfiguration) {
-	conn := connect(configuration.Type, configuration.FullUrl())
+	conn := connect("tcp", configuration.FullUrl())
 	protocol := network.ClientProtocol{Conn: conn, AuthFunc: authenticate}
 
 	utils.PrintWelcome()
@@ -176,12 +176,12 @@ func disconnect(conn net.Conn) {
 
 func displayEvents(events []types.Event) {
 	headers := []string{"Number", "Name", "Organizer name", "open"}
-	var printableEventRow []string
+	var printableEventRows []string
 	for _, event := range events {
-		printableEventRow = append(printableEventRow, event.ToRow())
+		printableEventRows = append(printableEventRows, event.ToRow())
 	}
 
-	utils.PrintTable(headers, printableEventRow)
+	utils.PrintTable(headers, printableEventRows)
 }
 
 func displayEventFromId(event *types.Event) {
@@ -206,16 +206,23 @@ func displayEventFromIdResume(event *types.Event) {
 		return
 	}
 	fmt.Printf("Event #%d: %s \n", event.Id, event.Name)
+	fmt.Println("Current board of registrations")
 
-	headers := []string{"Number", "Name", "Max capacity"}
-	var printableJobsRow []string
+	headers := []string{"User"}
+
 	for _, job := range event.Jobs {
-		printableJobsRow = append(printableJobsRow, job.ToRow())
+		headers = append(headers, fmt.Sprintf("#%d (max %d)", job.Id, job.Capacity))
 	}
 
-	utils.PrintTable(headers, printableJobsRow)
+	// TODO: display a cross if the user is regsitered in job.Id
 
-	fmt.Println("RESUME")
+	var printableRows []string
+	for _, job := range event.Jobs {
+		fmt.Println(job.Participants[0])
+		printableRows = append(printableRows, fmt.Sprintf("%s (max %d)", job.Id, job.Capacity))
+	}
+
+	utils.PrintTable(headers, printableRows)
 }
 
 func main() {

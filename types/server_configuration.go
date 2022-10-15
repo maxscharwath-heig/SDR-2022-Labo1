@@ -9,11 +9,12 @@ type UserWithPassword struct {
 }
 
 type ServerConfiguration struct {
-	Type   string             `json:"type"`
-	Host   string             `json:"host"`
-	Port   int                `json:"port"`
-	Users  []UserWithPassword `json:"users"`
-	Events []Event            `json:"events"`
+	Host          string             `json:"host"`
+	Port          int                `json:"port"`
+	Users         []UserWithPassword `json:"users"`
+	Events        []Event            `json:"events"`
+	Debug         bool               `json:"debug"`
+	ShowInfosLogs bool               `json:"showInfosLogs"`
 }
 
 func (config ServerConfiguration) FullUrl() string {
