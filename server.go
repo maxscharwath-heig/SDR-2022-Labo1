@@ -56,6 +56,7 @@ func main() {
 		Endpoints: map[string]network.Endpoint{
 			"create": createEndpoint(&chanData),
 			"show":   showEndpoint(&chanData),
+			"close":  closeEndpoint(&chanData),
 		},
 	}
 
@@ -121,6 +122,32 @@ func showEndpoint(chanData *ChanData) network.Endpoint {
 				return nil
 			}
 			return events
+		},
+	}
+}
+
+func closeEndpoint(chanData *ChanData) network.Endpoint {
+	return network.Endpoint{
+		NeedsAuth: true,
+		HandlerFunc: func(request network.Request) any {
+			events := <-chanData.events
+			defer func() {
+				chanData.events <- events
+			}()
+
+			data := dto.EventClose{}
+			request.GetJson(&data)
+
+			for i, ev := range events {
+				if ev.Id == data.EventId {
+					if ev.Organizer.Id != request.Auth.(*types.User).Id {
+						return nil
+					}
+					events[i].Open = false
+					return events[i]
+				}
+			}
+			return nil
 		},
 	}
 }
