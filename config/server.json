@@ -40,6 +40,12 @@
             "id": 1
           },
           "jobId": 1
+        },
+        {
+          "user": {
+            "id": 2
+          },
+          "jobId": 2
         }
       ],
       "open": true
@@ -62,7 +68,21 @@
           "capacity": 30
         }
       ],
-      "open": true
+      "open": true,
+      "participants": [
+        {
+          "user": {
+            "id": 1
+          },
+          "jobId": 2
+        },
+        {
+          "user": {
+            "id": 2
+          },
+          "jobId": 1
+        }
+      ]
     }
   ]
 }

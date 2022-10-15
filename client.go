@@ -155,7 +155,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 			disconnect(conn)
 			return
 		default:
-			fmt.Println("Invalid command, try again")
+			utils.LogError("Invalid command, try again")
 		}
 		fmt.Println("")
 	}
@@ -209,23 +209,44 @@ func displayEventFromIdResume(event *dto.Event) {
 	fmt.Printf("Event #%d: %s \n", event.Id, event.Name)
 	fmt.Println("Current board of registrations")
 
-	headers := []string{"User"}
-
+	headers := []string{" "}
 	for _, job := range event.Jobs {
-		headers = append(headers, fmt.Sprintf("#%d (max %d)", job.Id, job.Capacity))
+		headers = append(headers, fmt.Sprintf("#%d (%d/%d)", job.Id, job.Count, job.Capacity))
 	}
 
-	// TODO: display a cross if the user is regsitered in job.Id
-
-	var printableRows []string
-	for _, job := range event.Jobs {
-		printableRows = append(printableRows, fmt.Sprintf("%s (max %d)", job.Id, job.Capacity))
+	participations := make([][]bool, len(event.Participants))
+	for i := range participations {
+		participations[i] = make([]bool, len(event.Jobs))
 	}
 
-	utils.PrintTable(headers, printableRows)
+	users := make([]string, len(event.Participants))
+	for _, participant := range event.Participants {
+		participations[participant.User.Id-1][participant.JobId-1] = true
+		users[participant.User.Id-1] = participant.User.Username
+	}
+
+	var formattedRows []string
+	for i, row := range participations {
+		stringRow := formattedJobRow(users[i], row)
+		formattedRows = append(formattedRows, strings.Join(stringRow[:], "\t"))
+	}
+
+	utils.PrintTable(headers, formattedRows)
+}
+
+func formattedJobRow(username string, row []bool) []string {
+	values := []string{username}
+	for _, value := range row {
+		if value {
+			values = append(values, "x")
+		} else {
+			values = append(values, " ")
+		}
+	}
+	return values
 }
 
 func main() {
-	config := ReadConfig("config/client.json", config.ClientConfiguration{})
-	clientProcess(config)
+	clientConfig := ReadConfig("config/client.json", config.ClientConfiguration{})
+	clientProcess(clientConfig)
 }
