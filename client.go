@@ -219,7 +219,6 @@ func displayEventFromIdResume(event *dto.Event) {
 
 	var printableRows []string
 	for _, job := range event.Jobs {
-		fmt.Println(job.Participants[0])
 		printableRows = append(printableRows, fmt.Sprintf("%s (max %d)", job.Id, job.Capacity))
 	}
 
