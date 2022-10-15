@@ -89,10 +89,12 @@ func createEndpoint(chanData *ChanData) network.Endpoint {
 			request.GetJson(&data)
 
 			event := types.Event{
-				Id:        len(events) + 1,
-				Name:      data.Name,
-				Open:      true,
-				Organizer: request.Auth.(*types.User),
+				Id:           len(events) + 1,
+				Name:         data.Name,
+				Open:         true,
+				Organizer:    request.Auth.(*types.User),
+				Jobs:         make(map[int]*types.Job),
+				Participants: make(map[*types.User]*types.Job),
 			}
 			for i, job := range data.Jobs {
 				id := i + 1
