@@ -1,5 +1,5 @@
 {
-  "srvHost": "188.60.190.23",
-  "srvPort": 5452,
+  "srvHost": "localhost",
+  "srvPort": 9000,
   "showInfosLogs": false
 }
