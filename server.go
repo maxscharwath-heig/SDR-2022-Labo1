@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"sdr/labo1/src/config"
@@ -10,6 +9,8 @@ import (
 	"sdr/labo1/src/network"
 	"sdr/labo1/src/types"
 	"sdr/labo1/src/utils"
+	"sdr/labo1/src/utils/colors"
+	"time"
 )
 
 type ChanData struct {
@@ -25,13 +26,13 @@ func main() {
 
 	l, err := net.Listen("tcp", serverConfiguration.FullUrl())
 	if err != nil {
-		fmt.Println("Error listening:", err.Error())
+		utils.LogError("Error listening:", err.Error())
 		os.Exit(1)
 	}
 	// Close the listener when the application closes.
 	defer l.Close()
 
-	fmt.Println("Listening on " + serverConfiguration.FullUrl())
+	utils.LogSuccess("Listening on " + serverConfiguration.FullUrl())
 
 	//init chan data structure
 	chanData := ChanData{
@@ -48,7 +49,10 @@ func main() {
 	protocol := network.ServerProtocol{
 		AuthFunc: func(credential types.Credentials) (bool, network.Auth) {
 			users := <-chanData.users
+			utils.Log("START CRITICAL SECTION", colors.Red, "AuthFunc")
+			delayer(5)
 			defer func() {
+				utils.Log("END CRITICAL SECTION", colors.Red, "AuthFunc")
 				chanData.users <- users
 			}()
 			if credential.Username == "" || credential.Password == "" {
@@ -72,7 +76,7 @@ func main() {
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			fmt.Println("Error accepting: ", err.Error())
+			utils.LogError("Error accepting: ", err.Error())
 			os.Exit(1)
 		}
 		go protocol.Process(conn)
@@ -84,7 +88,10 @@ func createEndpoint(chanData *ChanData) network.Endpoint {
 		NeedsAuth: true,
 		HandlerFunc: func(request network.Request) any {
 			events := <-chanData.events
+			utils.Log("START CRITICAL SECTION", colors.Red, "HandlerFunc(create)")
+			delayer(5)
 			defer func() {
+				utils.Log("END CRITICAL SECTION", colors.Red, "HandlerFunc(create)")
 				chanData.events <- events
 			}()
 
@@ -118,7 +125,10 @@ func showEndpoint(chanData *ChanData) network.Endpoint {
 		NeedsAuth: false,
 		HandlerFunc: func(request network.Request) any {
 			events := <-chanData.events
+			utils.Log("START CRITICAL SECTION", colors.Red, "HandlerFunc(show)")
+			delayer(5)
 			defer func() {
+				utils.Log("END CRITICAL SECTION", colors.Red, "HandlerFunc(show)")
 				chanData.events <- events
 			}()
 
@@ -143,7 +153,10 @@ func closeEndpoint(chanData *ChanData) network.Endpoint {
 		NeedsAuth: true,
 		HandlerFunc: func(request network.Request) any {
 			events := <-chanData.events
+			utils.Log("START CRITICAL SECTION", colors.Red, "HandlerFunc(close)")
+			delayer(5)
 			defer func() {
+				utils.Log("END CRITICAL SECTION", colors.Red, "HandlerFunc(close)")
 				chanData.events <- events
 			}()
 
@@ -172,7 +185,10 @@ func registerEndpoint(chanData *ChanData) network.Endpoint {
 			request.GetJson(&data)
 
 			events := <-chanData.events
+			utils.Log("START CRITICAL SECTION", colors.Red, "HandlerFunc(register)")
+			delayer(5)
 			defer func() {
+				utils.Log("END CRITICAL SECTION", colors.Red, "HandlerFunc(register)")
 				chanData.events <- events
 			}()
 
@@ -184,4 +200,8 @@ func registerEndpoint(chanData *ChanData) network.Endpoint {
 			return false
 		},
 	}
+}
+
+func delayer(sec time.Duration) {
+	time.Sleep(time.Second * sec)
 }
