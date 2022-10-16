@@ -13,7 +13,7 @@ Pour démarrer l'
 
 La configuration du serveur et du client sont séparées dans deux fichiers différents.
 
-La configuration du serveur se trouve dans `config/server.json`: 
+La configuration du serveur se trouve dans `config/server.json`:
 
 ```json
   "host": "localhost",    // IP / nom DNS du serveur
@@ -36,7 +36,7 @@ La configuration du client se trouve dans `config/client.json`:
 ### Lancer le serveur (directement, ou via un exécutable)
 
 > `go run server.go`
-ou
+> ou
 > `go build server.go && ./server`
 
 Le serveur attendra des connexions sur le port TCP configuré dans `config/server.json`
@@ -44,7 +44,7 @@ Le serveur attendra des connexions sur le port TCP configuré dans `config/serve
 ### Lancer un client (directement, ou via un exécutable)
 
 > `go run client.go`
-ou
+> ou
 > `go build client.go && ./client`
 
 ### Liste de commandes disponible

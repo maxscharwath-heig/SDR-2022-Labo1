@@ -17,15 +17,17 @@ type HeaderResponse struct {
 
 type AuthResponse struct {
 	Success bool
-	Auth    any
+	Auth    Auth
 }
 
-type AuthFunc func(credentials types.Credentials) (bool, any)
+type Auth = *types.User
+
+type AuthFunc func(credentials types.Credentials) (bool, Auth)
 
 type Request struct {
 	Path   string
 	Header HeaderResponse
-	Auth   any
+	Auth   Auth
 	Data   string
 }
 
@@ -136,7 +138,7 @@ type ClientProtocol struct {
 	AuthFunc func() types.Credentials
 }
 
-func (p ClientProtocol) SendRequest(path string, data func(auth any) any) (string, error) {
+func (p ClientProtocol) SendRequest(path string, data func(auth Auth) any) (string, error) {
 	conn := connection{
 		conn:   p.Conn,
 		reader: bufio.NewReader(p.Conn),

@@ -86,7 +86,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 		case "h":
 			utils.PrintHelp()
 		case "create":
-			fmt.Println(protocol.SendRequest("create", func(auth any) any {
+			fmt.Println(protocol.SendRequest("create", func(auth network.Auth) any {
 				event := dto.EventCreate{
 					Name: stringPrompt("Enter event name:"),
 				}
@@ -109,13 +109,13 @@ func clientProcess(configuration config.ClientConfiguration) {
 				return event
 			}))
 		case "close":
-			fmt.Println(protocol.SendRequest("close", func(auth any) any {
+			fmt.Println(protocol.SendRequest("close", func(auth network.Auth) any {
 				return dto.EventClose{
 					EventId: intPrompt("Enter event id:"),
 				}
 			}))
 		case "register":
-			fmt.Println(protocol.SendRequest("register", func(auth any) any {
+			fmt.Println(protocol.SendRequest("register", func(auth network.Auth) any {
 				return dto.EventRegister{
 					EventId: intPrompt("Enter event id:"),
 					JobId:   intPrompt("Enter job id:"),
@@ -128,7 +128,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 			} else {
 				eventId = -1
 			}
-			response, _ := protocol.SendRequest("show", func(auth any) any {
+			response, _ := protocol.SendRequest("show", func(auth network.Auth) any {
 				return dto.EventShow{
 					EventId: eventId,
 					Resume:  flags["resume"],
@@ -210,31 +210,29 @@ func displayEventFromIdResume(event *dto.Event) {
 	fmt.Println("Current board of registrations")
 
 	headers := []string{" "}
-	for _, job := range event.Jobs {
-		headers = append(headers, fmt.Sprintf("#%d (%d/%d)", job.Id, job.Count, job.Capacity))
-	}
+	var rows []string
 
-	participations := make([][]bool, len(event.Participants))
-	for i := range participations {
-		participations[i] = make([]bool, len(event.Jobs))
+	type jobData struct {
+		Index int
+		Job   *types.Job
 	}
-
-	users := make([]string, len(event.Participants))
+	var jobs = make(map[int]jobData)
+	for index, job := range event.Jobs {
+		headers = append(headers, fmt.Sprintf("%s#%d (%d/%d)", job.Name, job.Id, job.Count, job.Capacity))
+		jobs[job.Id] = jobData{Index: index, Job: job}
+	}
 	for _, participant := range event.Participants {
-		participations[participant.User.Id-1][participant.JobId-1] = true
-		users[participant.User.Id-1] = participant.User.Username
+		if job, ok := jobs[participant.JobId]; ok {
+			participation := make([]bool, len(event.Jobs))
+			participation[job.Index] = true
+			rows = append(rows, formattedJobRow(participant.User.Username, participation))
+		}
 	}
 
-	var formattedRows []string
-	for i, row := range participations {
-		stringRow := formattedJobRow(users[i], row)
-		formattedRows = append(formattedRows, strings.Join(stringRow[:], "\t"))
-	}
-
-	utils.PrintTable(headers, formattedRows)
+	utils.PrintTable(headers, rows)
 }
 
-func formattedJobRow(username string, row []bool) []string {
+func formattedJobRow(username string, row []bool) string {
 	values := []string{username}
 	for _, value := range row {
 		if value {
@@ -243,7 +241,7 @@ func formattedJobRow(username string, row []bool) []string {
 			values = append(values, " ")
 		}
 	}
-	return values
+	return strings.Join(values, "\t")
 }
 
 func main() {

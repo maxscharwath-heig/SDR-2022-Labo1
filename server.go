@@ -13,8 +13,8 @@ import (
 )
 
 type ChanData struct {
-	users  chan []types.User
-	events chan []types.Event
+	users  chan []*types.User
+	events chan []*types.Event
 }
 
 func main() {
@@ -35,8 +35,8 @@ func main() {
 
 	//init chan data structure
 	chanData := ChanData{
-		users:  make(chan []types.User, 1),
-		events: make(chan []types.Event, 1),
+		users:  make(chan []*types.User, 1),
+		events: make(chan []*types.Event, 1),
 	}
 
 	{ // LOAD DATA FROM CONFIG
@@ -46,7 +46,7 @@ func main() {
 	}
 
 	protocol := network.ServerProtocol{
-		AuthFunc: func(credential types.Credentials) (bool, any) {
+		AuthFunc: func(credential types.Credentials) (bool, network.Auth) {
 			users := <-chanData.users
 			defer func() {
 				chanData.users <- users
@@ -56,7 +56,7 @@ func main() {
 			}
 			for _, user := range users {
 				if user.Username == credential.Username && user.Password == credential.Password {
-					return true, &user
+					return true, user
 				}
 			}
 			return false, nil
@@ -91,11 +91,11 @@ func createEndpoint(chanData *ChanData) network.Endpoint {
 			data := dto.EventCreate{}
 			request.GetJson(&data)
 
-			event := types.Event{
+			event := &types.Event{
 				Id:           len(events) + 1,
 				Name:         data.Name,
 				Open:         true,
-				Organizer:    request.Auth.(*types.User),
+				Organizer:    request.Auth,
 				Jobs:         make(map[int]*types.Job),
 				Participants: make(map[*types.User]*types.Job),
 			}
@@ -152,7 +152,7 @@ func closeEndpoint(chanData *ChanData) network.Endpoint {
 
 			for i, ev := range events {
 				if ev.Id == data.EventId {
-					if ev.Organizer.Id != request.Auth.(*types.User).Id {
+					if ev.Organizer.Id != request.Auth.Id {
 						return nil
 					}
 					events[i].Open = false
@@ -178,7 +178,7 @@ func registerEndpoint(chanData *ChanData) network.Endpoint {
 
 			for _, ev := range events {
 				if ev.Id == data.EventId {
-					return ev.Register(request.Auth.(*types.User), data.JobId)
+					return ev.Register(request.Auth, data.JobId)
 				}
 			}
 			return false

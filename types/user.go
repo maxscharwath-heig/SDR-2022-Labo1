@@ -6,10 +6,10 @@ type User struct {
 	Password string `json:"-"`
 }
 
-func FindUser(users []User, id int) *User {
+func FindUser(users []*User, id int) *User {
 	for _, user := range users {
 		if user.Id == id {
-			return &user
+			return user
 		}
 	}
 	return nil

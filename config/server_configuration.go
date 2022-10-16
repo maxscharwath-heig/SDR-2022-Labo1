@@ -26,9 +26,9 @@ func (config ServerConfiguration) FullUrl() string {
 	return fmt.Sprintf("%s:%d", config.Host, config.Port)
 }
 
-func (config ServerConfiguration) GetData() (users []types.User, events []types.Event) {
+func (config ServerConfiguration) GetData() (users []*types.User, events []*types.Event) {
 	for _, user := range config.Users {
-		users = append(users, types.User{
+		users = append(users, &types.User{
 			Id:       user.Id,
 			Username: user.Username,
 			Password: user.Password,
@@ -36,7 +36,7 @@ func (config ServerConfiguration) GetData() (users []types.User, events []types.
 	}
 
 	for _, event := range config.Events {
-		e := types.Event{
+		e := &types.Event{
 			Id:           event.Id,
 			Name:         event.Name,
 			Open:         event.Open,
