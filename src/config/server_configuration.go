@@ -2,8 +2,8 @@ package config
 
 import (
 	"fmt"
-	"sdr/labo1/dto"
-	"sdr/labo1/types"
+	"sdr/labo1/src/dto"
+	"sdr/labo1/src/types"
 )
 
 type UserWithPassword struct {

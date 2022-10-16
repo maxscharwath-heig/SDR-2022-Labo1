@@ -3,7 +3,7 @@ package utils
 import (
 	"fmt"
 	"os"
-	"sdr/labo1/utils/colors"
+	"sdr/labo1/src/utils/colors"
 	"strings"
 	"text/tabwriter"
 )

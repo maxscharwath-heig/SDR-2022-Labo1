@@ -2,7 +2,7 @@ package utils
 
 import (
 	"fmt"
-	"sdr/labo1/utils/colors"
+	"sdr/labo1/src/utils/colors"
 	"time"
 )
 

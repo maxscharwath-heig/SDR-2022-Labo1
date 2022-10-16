@@ -2,7 +2,7 @@ package dto
 
 import (
 	"fmt"
-	"sdr/labo1/types"
+	"sdr/labo1/src/types"
 )
 
 type Participant struct {

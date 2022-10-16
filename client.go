@@ -6,12 +6,12 @@ import (
 	"golang.org/x/term"
 	"net"
 	"os"
-	"sdr/labo1/config"
-	. "sdr/labo1/core"
-	"sdr/labo1/dto"
-	"sdr/labo1/network"
-	"sdr/labo1/types"
-	"sdr/labo1/utils"
+	"sdr/labo1/src/config"
+	"sdr/labo1/src/core"
+	"sdr/labo1/src/dto"
+	"sdr/labo1/src/network"
+	"sdr/labo1/src/types"
+	"sdr/labo1/src/utils"
 	"strconv"
 	"strings"
 	"syscall"
@@ -75,7 +75,7 @@ func parseArgs(cmdRaw string) (string, []string, map[string]bool) {
 
 func clientProcess(configuration config.ClientConfiguration) {
 	conn := connect("tcp", configuration.FullUrl())
-	protocol := network.ClientProtocol{Conn: conn, AuthFunc: authenticate}
+	protocol := network.CreateClientProtocol(conn, authenticate)
 
 	utils.PrintWelcome()
 	utils.PrintHelp()
@@ -245,7 +245,7 @@ func formattedJobRow(username string, row []bool) string {
 }
 
 func main() {
-	clientConfiguration := ReadConfig("client.json", config.ClientConfiguration{})
+	clientConfiguration := core.ReadConfig("client.json", config.ClientConfiguration{})
 	utils.SetEnabled(clientConfiguration.ShowInfosLogs)
 	clientProcess(clientConfiguration)
 }

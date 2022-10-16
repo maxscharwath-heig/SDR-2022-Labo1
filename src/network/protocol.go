@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"sdr/labo1/types"
-	"sdr/labo1/utils"
+	"sdr/labo1/src/types"
+	"sdr/labo1/src/utils"
 	"strings"
 )
 
@@ -136,6 +136,13 @@ func (p ServerProtocol) Process(c net.Conn) {
 type ClientProtocol struct {
 	Conn     net.Conn
 	AuthFunc func() types.Credentials
+}
+
+func CreateClientProtocol(conn net.Conn, authFunc func() types.Credentials) ClientProtocol {
+	return ClientProtocol{
+		Conn:     conn,
+		AuthFunc: authFunc,
+	}
 }
 
 func (p ClientProtocol) SendRequest(path string, data func(auth Auth) any) (string, error) {

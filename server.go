@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"sdr/labo1/config"
-	. "sdr/labo1/core"
-	"sdr/labo1/dto"
-	"sdr/labo1/network"
-	"sdr/labo1/types"
-	"sdr/labo1/utils"
+	"sdr/labo1/src/config"
+	"sdr/labo1/src/core"
+	"sdr/labo1/src/dto"
+	"sdr/labo1/src/network"
+	"sdr/labo1/src/types"
+	"sdr/labo1/src/utils"
 )
 
 type ChanData struct {
@@ -19,7 +19,7 @@ type ChanData struct {
 
 func main() {
 	// Listen for incoming connections.
-	serverConfiguration := ReadConfig("server.json", &config.ServerConfiguration{})
+	serverConfiguration := core.ReadConfig("server.json", &config.ServerConfiguration{})
 
 	utils.SetEnabled(serverConfiguration.ShowInfosLogs)
 
