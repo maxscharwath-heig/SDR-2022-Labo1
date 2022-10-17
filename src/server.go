@@ -88,6 +88,8 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 		}
 	}()
 	<-stopServer
+	utils.LogInfo("Stopping server")
+	l.Close()
 }
 
 func createEndpoint(chanData *chanData) network.Endpoint {
