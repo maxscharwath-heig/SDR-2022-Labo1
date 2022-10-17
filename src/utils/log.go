@@ -13,19 +13,19 @@ func SetEnabled(enable bool) {
 }
 
 func LogInfo(prefix string, data ...any) {
-	Log(prefix, colors.Yellow, data)
+	Log(false, prefix, colors.Yellow, data)
 }
 
 func LogSuccess(prefix string, data ...any) {
-	Log(prefix, colors.Green, data)
+	Log(false, prefix, colors.Green, data)
 }
 
 func LogError(data ...any) {
-	Log("error", colors.Red, data)
+	Log(false, "error", colors.Red, data)
 }
 
-func Log(prefix string, color string, data ...any) {
-	if !enabled {
+func Log(force bool, prefix string, color string, data ...any) {
+	if !enabled && !force {
 		return
 	}
 	date := time.Now().Format("2006-01-02 15:04:05")

@@ -17,8 +17,14 @@ type chanData struct {
 	events chan []*types.Event
 }
 
+var enableCriticDebug = false
+
 func Start(serverConfiguration *config.ServerConfiguration) {
 	utils.SetEnabled(serverConfiguration.ShowInfosLogs)
+	enableCriticDebug = serverConfiguration.Debug
+	if enableCriticDebug {
+		utils.LogInfo("Debug mode enabled")
+	}
 
 	l, err := net.Listen("tcp", serverConfiguration.FullUrl())
 	if err != nil {
@@ -45,10 +51,9 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 	protocol := network.ServerProtocol{
 		AuthFunc: func(credential types.Credentials) (bool, network.Auth) {
 			users := <-chanData.users
-			utils.Log("START CRITICAL SECTION", colors.Red, "AuthFunc")
-			delayer(5)
+			startCriticSection("AuthFunc")
 			defer func() {
-				utils.Log("END CRITICAL SECTION", colors.Red, "AuthFunc")
+				endCriticSection("AuthFunc")
 				chanData.users <- users
 			}()
 			if credential.Username == "" || credential.Password == "" {
@@ -84,10 +89,9 @@ func createEndpoint(chanData *chanData) network.Endpoint {
 		NeedsAuth: true,
 		HandlerFunc: func(request network.Request) any {
 			events := <-chanData.events
-			utils.Log("START CRITICAL SECTION", colors.Red, "HandlerFunc(create)")
-			delayer(5)
+			startCriticSection("HandlerFunc(create)")
 			defer func() {
-				utils.Log("END CRITICAL SECTION", colors.Red, "HandlerFunc(create)")
+				endCriticSection("HandlerFunc(create)")
 				chanData.events <- events
 			}()
 
@@ -121,10 +125,9 @@ func showEndpoint(chanData *chanData) network.Endpoint {
 		NeedsAuth: false,
 		HandlerFunc: func(request network.Request) any {
 			events := <-chanData.events
-			utils.Log("START CRITICAL SECTION", colors.Red, "HandlerFunc(show)")
-			delayer(5)
+			startCriticSection("HandlerFunc(show)")
 			defer func() {
-				utils.Log("END CRITICAL SECTION", colors.Red, "HandlerFunc(show)")
+				endCriticSection("HandlerFunc(show)")
 				chanData.events <- events
 			}()
 
@@ -149,10 +152,9 @@ func closeEndpoint(chanData *chanData) network.Endpoint {
 		NeedsAuth: true,
 		HandlerFunc: func(request network.Request) any {
 			events := <-chanData.events
-			utils.Log("START CRITICAL SECTION", colors.Red, "HandlerFunc(close)")
-			delayer(5)
+			startCriticSection("HandlerFunc(close)")
 			defer func() {
-				utils.Log("END CRITICAL SECTION", colors.Red, "HandlerFunc(close)")
+				endCriticSection("HandlerFunc(close)")
 				chanData.events <- events
 			}()
 
@@ -181,10 +183,9 @@ func registerEndpoint(chanData *chanData) network.Endpoint {
 			request.GetJson(&data)
 
 			events := <-chanData.events
-			utils.Log("START CRITICAL SECTION", colors.Red, "HandlerFunc(register)")
-			delayer(5)
+			startCriticSection("HandlerFunc(register)")
 			defer func() {
-				utils.Log("END CRITICAL SECTION", colors.Red, "HandlerFunc(register)")
+				endCriticSection("HandlerFunc(register)")
 				chanData.events <- events
 			}()
 
@@ -200,4 +201,19 @@ func registerEndpoint(chanData *chanData) network.Endpoint {
 
 func delayer(sec time.Duration) {
 	time.Sleep(time.Second * sec)
+}
+
+func startCriticSection(section string) {
+	if !enableCriticDebug {
+		return
+	}
+	utils.Log(true, "START CRITICAL SECTION", colors.BackgroundRed, section)
+	delayer(5)
+}
+
+func endCriticSection(section string) {
+	if !enableCriticDebug {
+		return
+	}
+	utils.Log(true, "END CRITICAL SECTION", colors.BackgroundRed, section)
 }
