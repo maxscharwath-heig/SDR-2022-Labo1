@@ -82,8 +82,6 @@ Affiche l'état de toutes les manifestations.
 
 ![show](./docs/show.png)
 
-// TODO: Mettre une capture
-
 #### Informations d'une manifestation
 
 > show `<numéro manifesation>`
