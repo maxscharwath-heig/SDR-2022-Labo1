@@ -30,6 +30,13 @@ func TestSuccess(t *testing.T) {
 	validSrvConfig := config.ServerConfiguration{
 		Host: "localhost",
 		Port: 9001,
+		Users: []config.UserWithPassword{
+			{
+				1,
+				"user1",
+				"pass1",
+			},
+		},
 	}
 
 	validClientConfig := config.ClientConfiguration{
@@ -42,9 +49,10 @@ func TestSuccess(t *testing.T) {
 			description: "Should connect to server",
 			test: func(creds func() types.Credentials) bool {
 
-				server.Start(&validSrvConfig)
+				go server.Start(&validSrvConfig)
 				conn, err := connect(validClientConfig.FullUrl())
 				conn.Close()
+				server.Stop()
 
 				return err == nil
 			},
@@ -56,30 +64,30 @@ func TestSuccess(t *testing.T) {
 			},
 		},
 		{
-			description: "Should connect create event",
+			description: "Should create event",
 			test: func(creds func() types.Credentials) bool {
-				server.Start(&validSrvConfig)
-				conn, err := connect(validClientConfig.FullUrl())
+				go server.Start(&validSrvConfig)
+				conn, _ := connect(validClientConfig.FullUrl())
 				cli := network.CreateClientProtocol(conn, creds)
 
 				response, err := cli.SendRequest("create", func(auth network.Auth) any {
 					return dto.EventCreate{
 						Name: "Test new event",
 						Jobs: []dto.Job{
-							{},
+							{
+								Name:     "Test",
+								Capacity: 2,
+							},
 						},
 					}
 				})
 
-				fmt.Println(response)
+				conn.Close()
+				server.Stop()
 
-				err1 := conn.Close()
-				if err1 != nil {
-					fmt.Println("error on close")
-					return false
-				}
+				expectedResponse := `{"id":1,"name":"Test new event","open":true,"jobs":[{"id":1,"name":"Test","capacity":2,"count":0}],"organizer":{"id":1,"username":"user1"},"participants":[]}`
 
-				return err == nil
+				return response == expectedResponse && err == nil
 			},
 			credentials: func() types.Credentials {
 				return types.Credentials{
@@ -100,7 +108,11 @@ func TestSuccess(t *testing.T) {
 func TestErrors(t *testing.T) {
 	// Ne pas se connecter si mauvaise config
 
+	// Mauvaise auth
+
 	// Ne pas pouvoir rejoindre une manif fermée
 
 	// ne pas pouvoir cloture une manif si on est pas le créateur
+
+	// Déconnexion du client par le serveur
 }
