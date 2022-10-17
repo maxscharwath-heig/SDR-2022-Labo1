@@ -81,7 +81,6 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 		for {
 			conn, err := l.Accept()
 			if err != nil {
-				utils.LogError("Error accepting: ", err.Error())
 				return
 			}
 			go protocol.Process(conn)
@@ -89,7 +88,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 	}()
 	<-stopServer
 	utils.LogInfo("Stopping server")
-	l.Close()
+	_ = l.Close()
 }
 
 func createEndpoint(chanData *chanData) network.Endpoint {

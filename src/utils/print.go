@@ -8,16 +8,27 @@ import (
 	"text/tabwriter"
 )
 
-func PrintWelcome() {
-	fmt.Println(colors.Purple, colors.Bold, "\n▄▀▀▀ █▀▀▄ █▀▀▄\n ▀▀▄ █  █ █▄▄▀\n▄▄▄▀ █▄▄▀ █  █", "v. 1.0", colors.Reset)
-	fmt.Println(colors.Red, colors.Bold, "by Nicolas Crausaz & Maxime Scharwath", colors.Reset)
+func printLogo() {
+	version := "v1.0.0"
+	fmt.Println(colors.Purple+colors.Bold+"\n▄▀▀▀ █▀▀▄ █▀▀▄\n ▀▀▄ █  █ █▄▄▀\n▄▄▄▀ █▄▄▀ █  █", version, colors.Reset)
+	fmt.Println(colors.Red+colors.Bold+"by Nicolas Crausaz & Maxime Scharwath", colors.Reset)
+}
+
+func PrintClientWelcome() {
+	printLogo()
 	fmt.Println(colors.BackgroundYellow, colors.Red, colors.Bold, "Welcome to the SDR-Labo1 client", colors.Reset)
 	fmt.Println("This client allows you to create & manage events")
 }
 
+func PrintServerWelcome() {
+	printLogo()
+	fmt.Println(colors.BackgroundYellow + colors.Red + colors.Bold + "Welcome to the SDR-Labo1 server" + colors.Reset)
+	fmt.Println(colors.Underline + "Write [quit] to quit server" + colors.Reset)
+}
+
 func PrintHelp() {
 	fmt.Println("Please type the wished command")
-	fmt.Println(colors.Underline, "List of commands:", colors.Reset)
+	fmt.Println(colors.Underline + "List of commands:" + colors.Reset)
 	fmt.Println("- create")
 	fmt.Println("- close")
 	fmt.Println("- register")

@@ -30,7 +30,7 @@ func Log(force bool, prefix string, color string, data ...any) {
 	}
 	date := time.Now().Format("2006-01-02 15:04:05")
 	var result []any
-	result = append(result, color, fmt.Sprintf("[%s] (%s):", date, prefix), colors.Reset)
+	result = append(result, color+fmt.Sprintf("[%s] (%s):", date, prefix)+colors.Reset)
 	result = append(result, data...)
 	fmt.Println(result...)
 }

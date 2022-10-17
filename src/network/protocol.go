@@ -79,7 +79,7 @@ type connection struct {
 
 // Determine if the connection is closed
 func (c connection) isClosed() bool {
-	_, err := c.reader.Peek(1)
+	_, err := c.conn.Read(make([]byte, 0))
 	return err != nil
 }
 
@@ -211,13 +211,16 @@ func (p ServerProtocol) Process(c net.Conn) {
 type ClientProtocol struct {
 	Conn     net.Conn
 	AuthFunc func() types.Credentials
+	conn     connection
 }
 
 // CreateClientProtocol Constructor
 func CreateClientProtocol(conn net.Conn, authFunc func() types.Credentials) *ClientProtocol {
+	c := connection{conn: conn, reader: bufio.NewReader(conn)}
 	return &ClientProtocol{
 		Conn:     conn,
 		AuthFunc: authFunc,
+		conn:     c,
 	}
 }
 
@@ -226,17 +229,13 @@ func CreateClientProtocol(conn net.Conn, authFunc func() types.Credentials) *Cli
 // - endpointId: the endpointId of the endpoint that should be called
 // - data: the function that is called after the response is received and the authentication is done.
 func (p ClientProtocol) SendRequest(endpointId string, data func(auth Auth) any) (response string, err error) {
-	conn := connection{
-		conn:   p.Conn,
-		reader: bufio.NewReader(p.Conn),
-	}
-	err = conn.sendData(endpointId)
+	err = p.conn.sendData(endpointId)
 
 	if err != nil {
 		return
 	}
 
-	header, err := conn.getHeader()
+	header, err := p.conn.getHeader()
 
 	if err != nil {
 		return
@@ -247,12 +246,12 @@ func (p ClientProtocol) SendRequest(endpointId string, data func(auth Auth) any)
 	}
 	authResponse := AuthResponse{}
 	if header.NeedsAuth {
-		err = conn.sendJSON(p.AuthFunc())
+		err = p.conn.sendJSON(p.AuthFunc())
 		if err != nil {
 			return
 		}
 
-		err = conn.getJson(&authResponse)
+		err = p.conn.getJson(&authResponse)
 
 		if err != nil {
 			return
@@ -262,10 +261,18 @@ func (p ClientProtocol) SendRequest(endpointId string, data func(auth Auth) any)
 			return "", fmt.Errorf("invalid credentials")
 		}
 	}
-	err = conn.sendJSON(data(authResponse.Auth))
+	err = p.conn.sendJSON(data(authResponse.Auth))
 	if err != nil {
 		return
 	}
 
-	return conn.getLine()
+	return p.conn.getLine()
+}
+
+func (p ClientProtocol) Close() error {
+	return p.Conn.Close()
+}
+
+func (p ClientProtocol) IsClosed() bool {
+	return p.conn.isClosed()
 }

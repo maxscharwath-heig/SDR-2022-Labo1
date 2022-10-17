@@ -12,6 +12,7 @@ import (
 	"sdr/labo1/src/network"
 	"sdr/labo1/src/types"
 	"sdr/labo1/src/utils"
+	"sdr/labo1/src/utils/colors"
 	"strconv"
 	"strings"
 	"syscall"
@@ -74,10 +75,16 @@ func parseArgs(cmdRaw string) (string, []string, map[string]bool) {
 }
 
 func clientProcess(configuration config.ClientConfiguration) {
+	utils.PrintClientWelcome()
 	conn := connect("tcp", configuration.FullUrl())
 	protocol := network.CreateClientProtocol(conn, authenticate)
-
-	utils.PrintWelcome()
+	go func() {
+		if protocol.IsClosed() {
+			fmt.Println()
+			fmt.Println(colors.Yellow + "Connection closed by server" + colors.Reset)
+			os.Exit(1)
+		}
+	}()
 	utils.PrintHelp()
 	for {
 		cmd, args, flags := parseArgs(stringPrompt("Enter command [press h for help]:"))
@@ -162,12 +169,14 @@ func clientProcess(configuration config.ClientConfiguration) {
 }
 
 func connect(protocol string, address string) *net.TCPConn {
+	fmt.Print(colors.Yellow + "Connecting to " + address + "... " + colors.Reset)
 	tcpAddr, _ := net.ResolveTCPAddr(protocol, address)
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)
 	if err != nil {
-		fmt.Println("Error connecting to server")
+		fmt.Println(colors.Red+"Connection failed", colors.Reset)
 		os.Exit(1)
 	}
+	fmt.Println(colors.Green+"Connection established", colors.Reset)
 	return conn
 }
 

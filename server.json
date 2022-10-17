@@ -1,7 +1,7 @@
 {
   "host": "localhost",
   "port": 9000,
-  "debug": true,
+  "debug": false,
   "showInfosLogs": true,
   "users": [
     {
