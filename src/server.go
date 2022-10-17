@@ -19,6 +19,12 @@ type chanData struct {
 
 var enableCriticDebug = false
 
+var stopServer = make(chan bool)
+
+func Stop() {
+	stopServer <- true
+}
+
 func Start(serverConfiguration *config.ServerConfiguration) {
 	utils.SetEnabled(serverConfiguration.ShowInfosLogs)
 	enableCriticDebug = serverConfiguration.Debug
@@ -31,8 +37,6 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 		utils.LogError("Error listening:", err.Error())
 		os.Exit(1)
 	}
-	// Close the listener when the application closes.
-	defer l.Close()
 
 	utils.LogSuccess("Listening on " + serverConfiguration.FullUrl())
 
@@ -73,15 +77,17 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 			"register": registerEndpoint(&chanData),
 		},
 	}
-
-	for {
-		conn, err := l.Accept()
-		if err != nil {
-			utils.LogError("Error accepting: ", err.Error())
-			os.Exit(1)
+	go func() {
+		for {
+			conn, err := l.Accept()
+			if err != nil {
+				utils.LogError("Error accepting: ", err.Error())
+				os.Exit(1)
+			}
+			go protocol.Process(conn)
 		}
-		go protocol.Process(conn)
-	}
+	}()
+	<-stopServer
 }
 
 func createEndpoint(chanData *chanData) network.Endpoint {
