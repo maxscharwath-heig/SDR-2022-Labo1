@@ -82,7 +82,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 			conn, err := l.Accept()
 			if err != nil {
 				utils.LogError("Error accepting: ", err.Error())
-				os.Exit(1)
+				return
 			}
 			go protocol.Process(conn)
 		}
