@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 )
 
 func stringPrompt(label string) string {
@@ -169,9 +170,24 @@ func clientProcess(configuration config.ClientConfiguration) {
 }
 
 func connect(protocol string, address string) *net.TCPConn {
-	fmt.Print(colors.Yellow + "Connecting to " + address + "... " + colors.Reset)
+	fmt.Print(colors.Yellow + "Connecting")
+	// print dots while connecting
+	isConnecting := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-isConnecting:
+				return
+			default:
+				fmt.Print(".")
+				time.Sleep(250 * time.Millisecond)
+			}
+		}
+	}()
 	tcpAddr, _ := net.ResolveTCPAddr(protocol, address)
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	isConnecting <- true
+	fmt.Print(colors.Reset)
 	if err != nil {
 		fmt.Println(colors.Red+"Connection failed", colors.Reset)
 		os.Exit(1)
