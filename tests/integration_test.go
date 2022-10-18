@@ -96,13 +96,231 @@ func TestSuccess(t *testing.T) {
 				}
 			},
 		},
+		{
+			description: "Should close event",
+			test: func(creds func() types.Credentials) bool {
+				go server.Start(&validSrvConfig)
+				conn, _ := connect(validClientConfig.FullUrl())
+				cli := network.CreateClientProtocol(conn, creds)
+
+				cli.SendRequest("create", func(auth network.Auth) any {
+					return dto.EventCreate{
+						Name: "Test new event",
+						Jobs: []dto.Job{
+							{
+								Name:     "Test",
+								Capacity: 2,
+							},
+						},
+					}
+				})
+
+				response, err := cli.SendRequest("close", func(auth network.Auth) any {
+					return dto.EventClose{
+						EventId: 1,
+					}
+				})
+
+				conn.Close()
+				server.Stop()
+
+				expectedResponse := `{"id":1,"name":"Test new event","open":false,"jobs":[{"id":1,"name":"Test","capacity":2,"count":0}],"organizer":{"id":1,"username":"user1"},"participants":[]}`
+
+				return response == expectedResponse && err == nil
+			},
+			credentials: func() types.Credentials {
+				return types.Credentials{
+					Username: "user1",
+					Password: "pass1",
+				}
+			},
+		},
+		{
+			description: "Should register to event",
+			test: func(creds func() types.Credentials) bool {
+				go server.Start(&validSrvConfig)
+				conn, _ := connect(validClientConfig.FullUrl())
+				cli := network.CreateClientProtocol(conn, creds)
+
+				cli.SendRequest("create", func(auth network.Auth) any {
+					return dto.EventCreate{
+						Name: "Test new event",
+						Jobs: []dto.Job{
+							{
+								Name:     "Test",
+								Capacity: 2,
+							},
+						},
+					}
+				})
+
+				response, err := cli.SendRequest("register", func(auth network.Auth) any {
+					return dto.EventRegister{
+						EventId: 1,
+						JobId:   1,
+					}
+				})
+
+				conn.Close()
+				server.Stop()
+
+				expectedResponse := `true`
+				return response == expectedResponse && err == nil
+			},
+			credentials: func() types.Credentials {
+				return types.Credentials{
+					Username: "user1",
+					Password: "pass1",
+				}
+			},
+		},
+		{
+			description: "Should show all events",
+			test: func(creds func() types.Credentials) bool {
+				go server.Start(&validSrvConfig)
+				conn, _ := connect(validClientConfig.FullUrl())
+				cli := network.CreateClientProtocol(conn, creds)
+
+				cli.SendRequest("create", func(auth network.Auth) any {
+					return dto.EventCreate{
+						Name: "Test new event",
+						Jobs: []dto.Job{
+							{
+								Name:     "Test",
+								Capacity: 2,
+							},
+						},
+					}
+				})
+				cli.SendRequest("create", func(auth network.Auth) any {
+					return dto.EventCreate{
+						Name: "Test new event 2",
+						Jobs: []dto.Job{
+							{
+								Name:     "Test 2",
+								Capacity: 2,
+							},
+						},
+					}
+				})
+
+				response, err := cli.SendRequest("show", func(auth network.Auth) any {
+					return dto.EventShow{
+						EventId: -1,
+						Resume:  false,
+					}
+				})
+
+				conn.Close()
+				server.Stop()
+
+				expectedResponse := `[{"id":1,"name":"Test new event","open":true,"jobs":[{"id":1,"name":"Test","capacity":2,"count":0}],"organizer":{"id":1,"username":"user1"},"participants":[]},{"id":2,"name":"Test new event 2","open":true,"jobs":[{"id":1,"name":"Test 2","capacity":2,"count":0}],"organizer":{"id":1,"username":"user1"},"participants":[]}]`
+				return response == expectedResponse && err == nil
+			},
+			credentials: func() types.Credentials {
+				return types.Credentials{
+					Username: "user1",
+					Password: "pass1",
+				}
+			},
+		},
+		{
+			description: "Should show one event",
+			test: func(creds func() types.Credentials) bool {
+				go server.Start(&validSrvConfig)
+				conn, _ := connect(validClientConfig.FullUrl())
+				cli := network.CreateClientProtocol(conn, creds)
+
+				cli.SendRequest("create", func(auth network.Auth) any {
+					return dto.EventCreate{
+						Name: "Test new event",
+						Jobs: []dto.Job{
+							{
+								Name:     "Test",
+								Capacity: 2,
+							},
+						},
+					}
+				})
+
+				response, err := cli.SendRequest("show", func(auth network.Auth) any {
+					return dto.EventShow{
+						EventId: 1,
+						Resume:  false,
+					}
+				})
+
+				conn.Close()
+				server.Stop()
+
+				expectedResponse := `{"id":1,"name":"Test new event","open":true,"jobs":[{"id":1,"name":"Test","capacity":2,"count":0}],"organizer":{"id":1,"username":"user1"},"participants":[]}`
+
+				return response == expectedResponse && err == nil
+			},
+			credentials: func() types.Credentials {
+				return types.Credentials{
+					Username: "user1",
+					Password: "pass1",
+				}
+			},
+		},
+		{
+			description: "Should show one event's resume",
+			test: func(creds func() types.Credentials) bool {
+				go server.Start(&validSrvConfig)
+				conn, _ := connect(validClientConfig.FullUrl())
+				cli := network.CreateClientProtocol(conn, creds)
+
+				cli.SendRequest("create", func(auth network.Auth) any {
+					return dto.EventCreate{
+						Name: "Test new event",
+						Jobs: []dto.Job{
+							{
+								Name:     "Test",
+								Capacity: 2,
+							},
+						},
+					}
+				})
+
+				cli.SendRequest("register", func(auth network.Auth) any {
+					return dto.EventRegister{
+						EventId: 1,
+						JobId:   1,
+					}
+				})
+
+				response, err := cli.SendRequest("show", func(auth network.Auth) any {
+					return dto.EventShow{
+						EventId: 1,
+						Resume:  true,
+					}
+				})
+
+				conn.Close()
+				server.Stop()
+
+				expectedResponse := `{"id":1,"name":"Test new event","open":true,"jobs":[{"id":1,"name":"Test","capacity":2,"count":1}],"organizer":{"id":1,"username":"user1"},"participants":[{"user":{"id":1,"username":"user1"},"jobId":1}]}`
+
+				return response == expectedResponse && err == nil
+			},
+			credentials: func() types.Credentials {
+				return types.Credentials{
+					Username: "user1",
+					Password: "pass1",
+				}
+			},
+		},
 	}
 
 	for _, test := range tests {
-		fmt.Println("TEST:", test.description)
-		fmt.Println("Passed:", test.test(test.credentials) == true)
+		fmt.Printf("TEST: %s: ", test.description)
+		if !test.test(test.credentials) {
+			t.Errorf("ERROR")
+		} else {
+			fmt.Println("Passed !")
+		}
 	}
-
 }
 
 func TestErrors(t *testing.T) {
