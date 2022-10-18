@@ -189,7 +189,7 @@ func (p ServerProtocol) Process(c net.Conn) {
 
 			request.Auth = auth
 			if !isValid {
-				utils.LogError("invalid endpointId, cancel request")
+				utils.LogError("invalid credentials, canceling request")
 				continue
 			}
 		}
