@@ -26,6 +26,8 @@ func connect(addr string) (*net.TCPConn, error) {
 	return conn, err
 }
 
+// TODO: encore un test pour voir que si on s'incrit deux fois ça garde que la derniere
+
 func TestSuccess(t *testing.T) {
 	validSrvConfig := config.ServerConfiguration{
 		Host: "localhost",
@@ -324,13 +326,162 @@ func TestSuccess(t *testing.T) {
 }
 
 func TestErrors(t *testing.T) {
-	// Ne pas se connecter si mauvaise config
+	validSrvConfig := config.ServerConfiguration{
+		Host: "localhost",
+		Port: 9001,
+		Users: []config.UserWithPassword{
+			{
+				1,
+				"user1",
+				"pass1",
+			},
+		},
+	}
 
-	// Mauvaise auth
+	validClientConfig := config.ClientConfiguration{
+		Host: "localhost",
+		Port: 9001,
+	}
 
-	// Ne pas pouvoir rejoindre une manif fermée
+	tests = []cliTest{
+		{
+			description: "Should give error if invalid auth",
+			test: func(creds func() types.Credentials) bool {
 
-	// ne pas pouvoir cloture une manif si on est pas le créateur
+				go server.Start(&validSrvConfig)
+				conn, _ := connect(validClientConfig.FullUrl())
+				cli := network.CreateClientProtocol(conn, creds)
 
-	// Déconnexion du client par le serveur
+				response, err := cli.SendRequest("create", func(auth network.Auth) any {
+					return dto.EventCreate{
+						Name: "Test new event",
+						Jobs: []dto.Job{
+							{
+								Name:     "Test",
+								Capacity: 2,
+							},
+						},
+					}
+				})
+
+				fmt.Println("")
+
+				conn.Close()
+				server.Stop()
+
+				expectedResponse := `{"Success":false,"Auth":null}`
+
+				return response == expectedResponse && err == nil
+			},
+			credentials: func() types.Credentials {
+				return types.Credentials{
+					Username: "coasceec",
+					Password: "psfasdadfasdf",
+				}
+			},
+		},
+		{
+			description: "Should not register to a closed event",
+			test: func(creds func() types.Credentials) bool {
+
+				go server.Start(&validSrvConfig)
+				conn, _ := connect(validClientConfig.FullUrl())
+				cli := network.CreateClientProtocol(conn, creds)
+
+				cli.SendRequest("create", func(auth network.Auth) any {
+					return dto.EventCreate{
+						Name: "Test new event",
+						Jobs: []dto.Job{
+							{
+								Name:     "Test",
+								Capacity: 2,
+							},
+						},
+					}
+				})
+
+				cli.SendRequest("close", func(auth network.Auth) any {
+					return dto.EventClose{
+						EventId: 1,
+					}
+				})
+
+				response, _ := cli.SendRequest("register", func(auth network.Auth) any {
+					return dto.EventRegister{
+						EventId: 1,
+					}
+				})
+
+				conn.Close()
+				server.Stop()
+
+				expectedResponse := `false`
+
+				return response == expectedResponse
+			},
+			credentials: func() types.Credentials {
+				return types.Credentials{
+					Username: "user1",
+					Password: "pass1",
+				}
+			},
+		},
+		{
+			description: "Should not close event if not organizer",
+			test: func(creds func() types.Credentials) bool {
+
+				// TODO: comment changer de creds ?
+
+				go server.Start(&validSrvConfig)
+				conn, _ := connect(validClientConfig.FullUrl())
+				cli := network.CreateClientProtocol(conn, creds)
+
+				cli.SendRequest("create", func(auth network.Auth) any {
+					return dto.EventCreate{
+						Name: "Test new event",
+						Jobs: []dto.Job{
+							{
+								Name:     "Test",
+								Capacity: 2,
+							},
+						},
+					}
+				})
+
+				cli.SendRequest("close", func(auth network.Auth) any {
+					return dto.EventClose{
+						EventId: 1,
+					}
+				})
+
+				response, _ := cli.SendRequest("register", func(auth network.Auth) any {
+					return dto.EventRegister{
+						EventId: 1,
+					}
+				})
+
+				conn.Close()
+				server.Stop()
+
+				expectedResponse := `false`
+
+				return response == expectedResponse
+			},
+			credentials: func() types.Credentials {
+				return types.Credentials{
+					Username: "user1",
+					Password: "pass1",
+				}
+			},
+		},
+	}
+
+	for _, test := range tests {
+		fmt.Printf("TEST: %s: ", test.description)
+		if !test.test(test.credentials) {
+			t.Errorf("ERROR")
+		} else {
+			fmt.Println("Passed !")
+		}
+	}
 }
