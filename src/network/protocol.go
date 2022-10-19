@@ -15,6 +15,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"sdr/labo1/src/types"
 	"sdr/labo1/src/utils"
@@ -30,8 +31,8 @@ type Auth = *types.User
 // - Valid: true if the endpoint is valid
 // - NeedsAuth: true if the endpoint needs authentication
 type HeaderResponse struct {
-	Valid     bool
-	NeedsAuth bool
+	Valid     bool `json:"valid"`
+	NeedsAuth bool `json:"needsAuth"`
 }
 
 // AuthResponse
@@ -39,8 +40,8 @@ type HeaderResponse struct {
 // - Success: true if the authentication was successful
 // - Auth: the authentication data ( see: type Auth )
 type AuthResponse struct {
-	Success bool
-	Auth    Auth
+	Success bool `json:"success"`
+	Auth    Auth `json:"auth"`
 }
 
 // AuthFunc
@@ -164,11 +165,12 @@ func (p ServerProtocol) Process(c net.Conn) {
 		conn:   c,
 		reader: bufio.NewReader(c),
 	}
+	var err error
 	for {
-		if conn.isClosed() {
+		if conn.isClosed() || err == io.EOF {
+			fmt.Println("connection closed")
 			break
 		}
-		var err error
 		request := Request{}
 		request.EndpointId, err = conn.getLine()
 		if err != nil {
@@ -253,8 +255,9 @@ func CreateClientProtocol(conn net.Conn, authFunc func() types.Credentials) *Cli
 
 // SendRequest
 // Send a request to the server
-// - endpointId: the endpointId of the endpoint that should be called
-// - data: the function that is called after the response is received and the authentication is done.
+//   - endpointId: the endpointId of the endpoint that should be called
+//   - data: the function that is called after the response is received and the authentication is done
+//     The function returns the response of the endpoint.
 func (p ClientProtocol) SendRequest(endpointId string, data func(auth Auth) any) (response string, err error) {
 	err = p.conn.sendData(endpointId)
 

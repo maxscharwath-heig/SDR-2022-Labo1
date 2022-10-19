@@ -83,11 +83,16 @@ func clientProcess(configuration config.ClientConfiguration) {
 	utils.PrintClientWelcome()
 	conn := connect("tcp", configuration.FullUrl())
 	protocol := network.CreateClientProtocol(conn, authenticate)
+	core.OnSigTerm(func() {
+		disconnect(conn)
+	})
 	go func() {
-		if protocol.IsClosed() {
-			fmt.Println()
-			fmt.Println(colors.Yellow + "Connection closed by server" + colors.Reset)
-			os.Exit(1)
+		for {
+			if protocol.IsClosed() {
+				fmt.Println()
+				fmt.Println(colors.Yellow + "Connection closed by server" + colors.Reset)
+				os.Exit(1)
+			}
 		}
 	}()
 	utils.PrintHelp()
@@ -128,7 +133,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 					fmt.Println(colors.Red + responseError.Error() + colors.Reset)
 				} else {
 					fmt.Println(colors.Green + "Event created: " + colors.Reset)
-					fmt.Println(event)
+					displayEventFromId(event)
 				}
 			}
 		case "close":
@@ -145,7 +150,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 					fmt.Println(colors.Red + responseError.Error() + colors.Reset)
 				} else {
 					fmt.Println(colors.Green + "Event closed: " + colors.Reset)
-					fmt.Println(event)
+					displayEventFromId(event)
 				}
 			}
 		case "register":
@@ -163,15 +168,13 @@ func clientProcess(configuration config.ClientConfiguration) {
 					fmt.Println(colors.Red + responseError.Error() + colors.Reset)
 				} else {
 					fmt.Println(colors.Green + "Registered: " + colors.Reset)
-					fmt.Println(event)
+					displayEventFromId(event)
 				}
 			}
 		case "show":
-			eventId := 0
+			eventId := -1
 			if len(args) > 0 {
 				eventId, _ = strconv.Atoi(args[0])
-			} else {
-				eventId = -1
 			}
 			json, err := protocol.SendRequest("show", func(auth network.Auth) any {
 				return dto.EventShow{
