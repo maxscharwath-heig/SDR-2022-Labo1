@@ -78,7 +78,7 @@ func TestSuccess(t *testing.T) {
 					server.Stop()
 				}()
 
-				response, err := cli.SendRequest("create", func(auth network.Auth) any {
+				response, err := cli.SendRequest("create", func(auth network.AuthId) any {
 					return dto.EventCreate{
 						Name: "Test new event",
 						Jobs: []dto.Job{
@@ -112,7 +112,7 @@ func TestSuccess(t *testing.T) {
 					server.Stop()
 				}()
 
-				cli.SendRequest("create", func(auth network.Auth) any {
+				cli.SendRequest("create", func(auth network.AuthId) any {
 					return dto.EventCreate{
 						Name: "Test new event",
 						Jobs: []dto.Job{
@@ -124,7 +124,7 @@ func TestSuccess(t *testing.T) {
 					}
 				})
 
-				response, err := cli.SendRequest("close", func(auth network.Auth) any {
+				response, err := cli.SendRequest("close", func(auth network.AuthId) any {
 					return dto.EventClose{
 						EventId: 1,
 					}
@@ -152,7 +152,7 @@ func TestSuccess(t *testing.T) {
 					server.Stop()
 				}()
 
-				cli.SendRequest("create", func(auth network.Auth) any {
+				cli.SendRequest("create", func(auth network.AuthId) any {
 					return dto.EventCreate{
 						Name: "Test new event",
 						Jobs: []dto.Job{
@@ -164,7 +164,7 @@ func TestSuccess(t *testing.T) {
 					}
 				})
 
-				response, err := cli.SendRequest("register", func(auth network.Auth) any {
+				response, err := cli.SendRequest("register", func(auth network.AuthId) any {
 					return dto.EventRegister{
 						EventId: 1,
 						JobId:   1,
@@ -192,7 +192,7 @@ func TestSuccess(t *testing.T) {
 					server.Stop()
 				}()
 
-				cli.SendRequest("create", func(auth network.Auth) any {
+				cli.SendRequest("create", func(auth network.AuthId) any {
 					return dto.EventCreate{
 						Name: "Test new event",
 						Jobs: []dto.Job{
@@ -203,7 +203,7 @@ func TestSuccess(t *testing.T) {
 						},
 					}
 				})
-				cli.SendRequest("create", func(auth network.Auth) any {
+				cli.SendRequest("create", func(auth network.AuthId) any {
 					return dto.EventCreate{
 						Name: "Test new event 2",
 						Jobs: []dto.Job{
@@ -215,7 +215,7 @@ func TestSuccess(t *testing.T) {
 					}
 				})
 
-				response, err := cli.SendRequest("show", func(auth network.Auth) any {
+				response, err := cli.SendRequest("show", func(auth network.AuthId) any {
 					return dto.EventShow{
 						EventId: -1,
 						Resume:  false,
@@ -243,7 +243,7 @@ func TestSuccess(t *testing.T) {
 					server.Stop()
 				}()
 
-				cli.SendRequest("create", func(auth network.Auth) any {
+				cli.SendRequest("create", func(auth network.AuthId) any {
 					return dto.EventCreate{
 						Name: "Test new event",
 						Jobs: []dto.Job{
@@ -255,7 +255,7 @@ func TestSuccess(t *testing.T) {
 					}
 				})
 
-				response, err := cli.SendRequest("show", func(auth network.Auth) any {
+				response, err := cli.SendRequest("show", func(auth network.AuthId) any {
 					return dto.EventShow{
 						EventId: 1,
 						Resume:  false,
@@ -284,7 +284,7 @@ func TestSuccess(t *testing.T) {
 					server.Stop()
 				}()
 
-				cli.SendRequest("create", func(auth network.Auth) any {
+				cli.SendRequest("create", func(auth network.AuthId) any {
 					return dto.EventCreate{
 						Name: "Test new event",
 						Jobs: []dto.Job{
@@ -296,14 +296,14 @@ func TestSuccess(t *testing.T) {
 					}
 				})
 
-				cli.SendRequest("register", func(auth network.Auth) any {
+				cli.SendRequest("register", func(auth network.AuthId) any {
 					return dto.EventRegister{
 						EventId: 1,
 						JobId:   1,
 					}
 				})
 
-				response, err := cli.SendRequest("show", func(auth network.Auth) any {
+				response, err := cli.SendRequest("show", func(auth network.AuthId) any {
 					return dto.EventShow{
 						EventId: 1,
 						Resume:  true,
@@ -364,7 +364,7 @@ func TestErrors(t *testing.T) {
 					server.Stop()
 				}()
 
-				response, err := cli.SendRequest("create", func(auth network.Auth) any {
+				response, err := cli.SendRequest("create", func(auth network.AuthId) any {
 					return dto.EventCreate{
 						Name: "Test new event",
 						Jobs: []dto.Job{
@@ -378,7 +378,7 @@ func TestErrors(t *testing.T) {
 
 				fmt.Println("")
 
-				expectedResponse := `{"Success":false,"Auth":null}`
+				expectedResponse := `{"Success":false,"AuthId":null}`
 
 				return response == expectedResponse && err == nil
 			},
@@ -401,7 +401,7 @@ func TestErrors(t *testing.T) {
 					server.Stop()
 				}()
 
-				cli.SendRequest("create", func(auth network.Auth) any {
+				cli.SendRequest("create", func(auth network.AuthId) any {
 					return dto.EventCreate{
 						Name: "Test new event",
 						Jobs: []dto.Job{
@@ -413,13 +413,13 @@ func TestErrors(t *testing.T) {
 					}
 				})
 
-				cli.SendRequest("close", func(auth network.Auth) any {
+				cli.SendRequest("close", func(auth network.AuthId) any {
 					return dto.EventClose{
 						EventId: 1,
 					}
 				})
 
-				response, _ := cli.SendRequest("register", func(auth network.Auth) any {
+				response, _ := cli.SendRequest("register", func(auth network.AuthId) any {
 					return dto.EventRegister{
 						EventId: 1,
 					}
@@ -450,7 +450,7 @@ func TestErrors(t *testing.T) {
 					server.Stop()
 				}()
 
-				cli.SendRequest("create", func(auth network.Auth) any {
+				cli.SendRequest("create", func(auth network.AuthId) any {
 					return dto.EventCreate{
 						Name: "Test new event",
 						Jobs: []dto.Job{
@@ -462,13 +462,13 @@ func TestErrors(t *testing.T) {
 					}
 				})
 
-				cli.SendRequest("close", func(auth network.Auth) any {
+				cli.SendRequest("close", func(auth network.AuthId) any {
 					return dto.EventClose{
 						EventId: 1,
 					}
 				})
 
-				response, _ := cli.SendRequest("register", func(auth network.Auth) any {
+				response, _ := cli.SendRequest("register", func(auth network.AuthId) any {
 					return dto.EventRegister{
 						EventId: 1,
 					}

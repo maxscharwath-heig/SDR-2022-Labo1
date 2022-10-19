@@ -103,7 +103,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 		case "h":
 			utils.PrintHelp()
 		case "create":
-			json, err := protocol.SendRequest("create", func(auth network.Auth) any {
+			json, err := protocol.SendRequest("create", func(auth network.AuthId) any {
 				event := dto.EventCreate{
 					Name: stringPrompt("Enter event name:"),
 				}
@@ -137,7 +137,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 				}
 			}
 		case "close":
-			json, err := protocol.SendRequest("close", func(auth network.Auth) any {
+			json, err := protocol.SendRequest("close", func(auth network.AuthId) any {
 				return dto.EventClose{
 					EventId: intPrompt("Enter event id:"),
 				}
@@ -154,7 +154,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 				}
 			}
 		case "register":
-			json, err := protocol.SendRequest("register", func(auth network.Auth) any {
+			json, err := protocol.SendRequest("register", func(auth network.AuthId) any {
 				return dto.EventRegister{
 					EventId: intPrompt("Enter event id:"),
 					JobId:   intPrompt("Enter job id:"),
@@ -176,7 +176,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 			if len(args) > 0 {
 				eventId, _ = strconv.Atoi(args[0])
 			}
-			json, err := protocol.SendRequest("show", func(auth network.Auth) any {
+			json, err := protocol.SendRequest("show", func(auth network.AuthId) any {
 				return dto.EventShow{
 					EventId: eventId,
 					Resume:  flags["resume"],
@@ -287,7 +287,7 @@ func displayEventFromIdResume(event *dto.Event) {
 
 	type jobData struct {
 		Index int
-		Job   *types.Job
+		Job   types.Job
 	}
 	var jobs = make(map[int]jobData)
 	for index, job := range event.Jobs {

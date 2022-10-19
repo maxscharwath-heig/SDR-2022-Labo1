@@ -22,9 +22,9 @@ import (
 	"strings"
 )
 
-// Auth
+// AuthId
 // The type of the auth object
-type Auth = *types.User
+type AuthId = int
 
 // HeaderResponse
 // is the first response of the server.
@@ -38,22 +38,22 @@ type HeaderResponse struct {
 // AuthResponse
 // is the response of the server after the authentication.
 // - Success: true if the authentication was successful
-// - Auth: the authentication data ( see: type Auth )
+// - AuthId: the authentication data ( see: type AuthId )
 type AuthResponse struct {
-	Success bool `json:"success"`
-	Auth    Auth `json:"auth"`
+	Success bool   `json:"success"`
+	Auth    AuthId `json:"auth"`
 }
 
 // AuthFunc
 // is the function that is called to authenticate the user.
-// Returns true if the authentication was successful and the authentication data. ( see: type Auth )
-type AuthFunc func(credentials types.Credentials) (bool, Auth)
+// Returns true if the authentication was successful and the authentication data. ( see: type AuthId )
+type AuthFunc func(credentials types.Credentials) (bool, AuthId)
 
 // Request is the request struct
 type Request struct {
 	EndpointId string
 	Header     HeaderResponse
-	Auth       Auth
+	AuthId     AuthId
 	Data       string
 }
 
@@ -212,7 +212,7 @@ func (p ServerProtocol) Process(c net.Conn) {
 				continue
 			}
 
-			request.Auth = auth
+			request.AuthId = auth
 			if !isValid {
 				utils.LogError("invalid credentials, canceling request")
 				continue
@@ -258,7 +258,7 @@ func CreateClientProtocol(conn net.Conn, authFunc func() types.Credentials) *Cli
 //   - endpointId: the endpointId of the endpoint that should be called
 //   - data: the function that is called after the response is received and the authentication is done
 //     The function returns the response of the endpoint.
-func (p ClientProtocol) SendRequest(endpointId string, data func(auth Auth) any) (response string, err error) {
+func (p ClientProtocol) SendRequest(endpointId string, data func(auth AuthId) any) (response string, err error) {
 	err = p.conn.sendData(endpointId)
 
 	if err != nil {

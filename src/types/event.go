@@ -7,25 +7,22 @@ type Event struct {
 	Name         string
 	Jobs         map[int]*Job
 	Open         bool
-	Organizer    *User
-	Participants map[*User]*Job
+	OrganizerId  int
+	Participants map[int]int
 }
 
-func (event *Event) Unregister(user *User) {
-	if job := event.Participants[user]; job != nil {
-		job.Count--
+func (event *Event) Unregister(userId int) {
+	if jobId, ok := event.Participants[userId]; ok {
+		event.Jobs[jobId].Count--
 	}
-	delete(event.Participants, user)
+	delete(event.Participants, userId)
 }
 
-func (event *Event) Register(user *User, jobId int) error {
-	if user == nil {
-		return fmt.Errorf("user is nil")
-	}
+func (event *Event) Register(userId int, jobId int) error {
 	if job, ok := event.Jobs[jobId]; ok {
 		if job.Count < job.Capacity {
-			event.Unregister(user)
-			event.Participants[user] = job
+			event.Unregister(userId)
+			event.Participants[userId] = jobId
 			job.Count++
 			return nil
 		}

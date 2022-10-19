@@ -6,16 +6,16 @@ import (
 )
 
 type Participant struct {
-	User  *types.User `json:"user"`
-	JobId int         `json:"jobId"`
+	User  types.User `json:"user"`
+	JobId int        `json:"jobId"`
 }
 
 type Event struct {
 	Id           int           `json:"id"`
 	Name         string        `json:"name"`
 	Open         bool          `json:"open"`
-	Jobs         []*types.Job  `json:"jobs"`
-	Organizer    *types.User   `json:"organizer"`
+	Jobs         []types.Job   `json:"jobs"`
+	Organizer    types.User    `json:"organizer"`
 	Participants []Participant `json:"participants"`
 }
 
@@ -52,36 +52,4 @@ type EventCreate struct {
 type EventShow struct {
 	EventId int  `json:"eventId"`
 	Resume  bool `json:"resume"`
-}
-
-// CONVERSIONS
-
-func EventToDTO(event *types.Event) Event {
-	var jobs []*types.Job
-	for _, job := range event.Jobs {
-		jobs = append(jobs, job)
-	}
-	participants := make([]Participant, 0)
-	for user, job := range event.Participants {
-		participants = append(participants, Participant{
-			User:  user,
-			JobId: job.Id,
-		})
-	}
-	return Event{
-		Id:           event.Id,
-		Name:         event.Name,
-		Open:         event.Open,
-		Jobs:         jobs,
-		Organizer:    event.Organizer,
-		Participants: participants,
-	}
-}
-
-func EventsToDTO(events []*types.Event) []Event {
-	var dtoEvents []Event
-	for _, event := range events {
-		dtoEvents = append(dtoEvents, EventToDTO(event))
-	}
-	return dtoEvents
 }

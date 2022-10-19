@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"sdr/labo1/src/config"
@@ -12,8 +13,8 @@ import (
 	"time"
 )
 
-type chanData struct {
-	users  chan []*types.User
+type ChanData struct {
+	users  chan map[int]*types.User
 	events chan []*types.Event
 }
 
@@ -41,8 +42,8 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 	utils.LogSuccess("Listening on " + serverConfiguration.FullUrl())
 
 	//init chan data structure
-	chanData := chanData{
-		users:  make(chan []*types.User, 1),
+	chanData := ChanData{
+		users:  make(chan map[int]*types.User, 1),
 		events: make(chan []*types.Event, 1),
 	}
 
@@ -53,7 +54,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 	}
 
 	protocol := network.ServerProtocol{
-		AuthFunc: func(credential types.Credentials) (bool, network.Auth) {
+		AuthFunc: func(credential types.Credentials) (bool, network.AuthId) {
 			users := <-chanData.users
 			startCriticSection("AuthFunc")
 			defer func() {
@@ -61,14 +62,14 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 				chanData.users <- users
 			}()
 			if credential.Username == "" || credential.Password == "" {
-				return false, nil
+				return false, -1
 			}
 			for _, user := range users {
 				if user.Username == credential.Username && user.Password == credential.Password {
-					return true, user
+					return true, -1
 				}
 			}
-			return false, nil
+			return false, -1
 		},
 		Endpoints: map[string]network.Endpoint{
 			"create":   createEndpoint(&chanData),
@@ -91,7 +92,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 	_ = l.Close()
 }
 
-func createEndpoint(chanData *chanData) network.Endpoint {
+func createEndpoint(chanData *ChanData) network.Endpoint {
 	return network.Endpoint{
 		NeedsAuth: true,
 		HandlerFunc: func(request network.Request) network.Response[any] {
@@ -109,9 +110,9 @@ func createEndpoint(chanData *chanData) network.Endpoint {
 				Id:           len(events) + 1,
 				Name:         data.Name,
 				Open:         true,
-				Organizer:    request.Auth,
+				OrganizerId:  request.AuthId,
 				Jobs:         make(map[int]*types.Job),
-				Participants: make(map[*types.User]*types.Job),
+				Participants: make(map[int]int),
 			}
 			for i, job := range data.Jobs {
 				id := i + 1
@@ -124,13 +125,13 @@ func createEndpoint(chanData *chanData) network.Endpoint {
 			events = append(events, event)
 			return network.Response[any]{
 				Success: true,
-				Data:    dto.EventToDTO(event),
+				Data:    EventToDTO(event, chanData),
 			}
 		},
 	}
 }
 
-func showEndpoint(chanData *chanData) network.Endpoint {
+func showEndpoint(chanData *ChanData) network.Endpoint {
 	return network.Endpoint{
 		NeedsAuth: false,
 		HandlerFunc: func(request network.Request) network.Response[any] {
@@ -149,7 +150,7 @@ func showEndpoint(chanData *chanData) network.Endpoint {
 					if ev.Id == data.EventId {
 						return network.Response[any]{
 							Success: true,
-							Data:    dto.EventToDTO(ev),
+							Data:    EventToDTO(ev, chanData),
 						}
 					}
 				}
@@ -160,13 +161,13 @@ func showEndpoint(chanData *chanData) network.Endpoint {
 			}
 			return network.Response[any]{
 				Success: true,
-				Data:    dto.EventsToDTO(events),
+				Data:    EventsToDTO(events, chanData),
 			}
 		},
 	}
 }
 
-func closeEndpoint(chanData *chanData) network.Endpoint {
+func closeEndpoint(chanData *ChanData) network.Endpoint {
 	return network.Endpoint{
 		NeedsAuth: true,
 		HandlerFunc: func(request network.Request) network.Response[any] {
@@ -182,7 +183,7 @@ func closeEndpoint(chanData *chanData) network.Endpoint {
 
 			for i, ev := range events {
 				if ev.Id == data.EventId {
-					if ev.Organizer.Id != request.Auth.Id {
+					if ev.OrganizerId != request.AuthId {
 						return network.Response[any]{
 							Success: false,
 							Error:   "you are not the organizer of this event",
@@ -191,7 +192,7 @@ func closeEndpoint(chanData *chanData) network.Endpoint {
 					events[i].Open = false
 					return network.Response[any]{
 						Success: true,
-						Data:    dto.EventToDTO(events[i]),
+						Data:    EventToDTO(events[i], chanData),
 					}
 				}
 			}
@@ -203,7 +204,7 @@ func closeEndpoint(chanData *chanData) network.Endpoint {
 	}
 }
 
-func registerEndpoint(chanData *chanData) network.Endpoint {
+func registerEndpoint(chanData *ChanData) network.Endpoint {
 	return network.Endpoint{
 		NeedsAuth: true,
 		HandlerFunc: func(request network.Request) network.Response[any] {
@@ -219,13 +220,13 @@ func registerEndpoint(chanData *chanData) network.Endpoint {
 
 			for _, ev := range events {
 				if ev.Id == data.EventId {
-					if err := ev.Register(request.Auth, data.JobId); err != nil {
+					if err := ev.Register(request.AuthId, data.JobId); err != nil {
 						return network.Response[any]{
 							Success: false,
 							Error:   err.Error(),
 						}
 					}
-					return network.Response[any]{Success: true, Data: dto.EventToDTO(ev)}
+					return network.Response[any]{Success: true, Data: EventToDTO(ev, chanData)}
 				}
 			}
 			return network.Response[any]{
@@ -253,4 +254,46 @@ func endCriticSection(section string) {
 		return
 	}
 	utils.Log(true, "END CRITICAL SECTION", colors.BackgroundRed, section)
+}
+
+func getUserById(id int, chanData *ChanData) types.User {
+	users := <-chanData.users
+	startCriticSection(fmt.Sprintf("getUserById(%d)", id))
+	defer func() {
+		endCriticSection(fmt.Sprintf("getUserById(%d)", id))
+		chanData.users <- users
+	}()
+	return *users[id]
+}
+
+// CONVERSIONS
+
+func EventToDTO(event *types.Event, chanData *ChanData) dto.Event {
+	var jobs []types.Job
+	for _, job := range event.Jobs {
+		jobs = append(jobs, *job)
+	}
+	participants := make([]dto.Participant, 0)
+	for userId, jobId := range event.Participants {
+		participants = append(participants, dto.Participant{
+			User:  getUserById(userId, chanData),
+			JobId: jobId,
+		})
+	}
+	return dto.Event{
+		Id:           event.Id,
+		Name:         event.Name,
+		Open:         event.Open,
+		Jobs:         jobs,
+		Organizer:    getUserById(event.OrganizerId, chanData),
+		Participants: participants,
+	}
+}
+
+func EventsToDTO(events []*types.Event, chanData *ChanData) []dto.Event {
+	var dtoEvents []dto.Event
+	for _, event := range events {
+		dtoEvents = append(dtoEvents, EventToDTO(event, chanData))
+	}
+	return dtoEvents
 }

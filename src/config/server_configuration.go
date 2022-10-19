@@ -25,13 +25,14 @@ func (config ServerConfiguration) FullUrl() string {
 	return fmt.Sprintf("%s:%d", config.Host, config.Port)
 }
 
-func (config ServerConfiguration) GetData() (users []*types.User, events []*types.Event) {
+func (config ServerConfiguration) GetData() (users map[int]*types.User, events []*types.Event) {
+	users = make(map[int]*types.User)
 	for _, user := range config.Users {
-		users = append(users, &types.User{
+		users[user.Id] = &types.User{
 			Id:       user.Id,
 			Username: user.Username,
 			Password: user.Password,
-		})
+		}
 	}
 
 	for _, event := range config.Events {
@@ -39,9 +40,9 @@ func (config ServerConfiguration) GetData() (users []*types.User, events []*type
 			Id:           event.Id,
 			Name:         event.Name,
 			Open:         event.Open,
-			Organizer:    types.FindUser(users, event.Organizer.Id),
+			OrganizerId:  event.Organizer.Id,
 			Jobs:         make(map[int]*types.Job),
-			Participants: make(map[*types.User]*types.Job),
+			Participants: make(map[int]int),
 		}
 		for _, job := range event.Jobs {
 			e.Jobs[job.Id] = &types.Job{
@@ -50,11 +51,8 @@ func (config ServerConfiguration) GetData() (users []*types.User, events []*type
 				Capacity: job.Capacity,
 			}
 		}
-		if e.Organizer == nil {
-			panic("Organizer not found")
-		}
 		for _, participant := range event.Participants {
-			e.Register(types.FindUser(users, participant.User.Id), participant.JobId)
+			e.Register(participant.User.Id, participant.JobId)
 		}
 		events = append(events, e)
 	}
