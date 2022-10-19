@@ -53,8 +53,10 @@ func TestSuccess(t *testing.T) {
 
 				go server.Start(&validSrvConfig)
 				conn, err := connect(validClientConfig.FullUrl())
-				conn.Close()
-				server.Stop()
+				defer func() {
+					conn.Close()
+					server.Stop()
+				}()
 
 				return err == nil
 			},
@@ -71,6 +73,10 @@ func TestSuccess(t *testing.T) {
 				go server.Start(&validSrvConfig)
 				conn, _ := connect(validClientConfig.FullUrl())
 				cli := network.CreateClientProtocol(conn, creds)
+				defer func() {
+					conn.Close()
+					server.Stop()
+				}()
 
 				response, err := cli.SendRequest("create", func(auth network.Auth) any {
 					return dto.EventCreate{
@@ -83,9 +89,6 @@ func TestSuccess(t *testing.T) {
 						},
 					}
 				})
-
-				conn.Close()
-				server.Stop()
 
 				expectedResponse := `{"id":1,"name":"Test new event","open":true,"jobs":[{"id":1,"name":"Test","capacity":2,"count":0}],"organizer":{"id":1,"username":"user1"},"participants":[]}`
 
@@ -104,6 +107,10 @@ func TestSuccess(t *testing.T) {
 				go server.Start(&validSrvConfig)
 				conn, _ := connect(validClientConfig.FullUrl())
 				cli := network.CreateClientProtocol(conn, creds)
+				defer func() {
+					conn.Close()
+					server.Stop()
+				}()
 
 				cli.SendRequest("create", func(auth network.Auth) any {
 					return dto.EventCreate{
@@ -123,9 +130,6 @@ func TestSuccess(t *testing.T) {
 					}
 				})
 
-				conn.Close()
-				server.Stop()
-
 				expectedResponse := `{"id":1,"name":"Test new event","open":false,"jobs":[{"id":1,"name":"Test","capacity":2,"count":0}],"organizer":{"id":1,"username":"user1"},"participants":[]}`
 
 				return response == expectedResponse && err == nil
@@ -143,6 +147,10 @@ func TestSuccess(t *testing.T) {
 				go server.Start(&validSrvConfig)
 				conn, _ := connect(validClientConfig.FullUrl())
 				cli := network.CreateClientProtocol(conn, creds)
+				defer func() {
+					conn.Close()
+					server.Stop()
+				}()
 
 				cli.SendRequest("create", func(auth network.Auth) any {
 					return dto.EventCreate{
@@ -163,9 +171,6 @@ func TestSuccess(t *testing.T) {
 					}
 				})
 
-				conn.Close()
-				server.Stop()
-
 				expectedResponse := `true`
 				return response == expectedResponse && err == nil
 			},
@@ -182,6 +187,10 @@ func TestSuccess(t *testing.T) {
 				go server.Start(&validSrvConfig)
 				conn, _ := connect(validClientConfig.FullUrl())
 				cli := network.CreateClientProtocol(conn, creds)
+				defer func() {
+					conn.Close()
+					server.Stop()
+				}()
 
 				cli.SendRequest("create", func(auth network.Auth) any {
 					return dto.EventCreate{
@@ -213,9 +222,6 @@ func TestSuccess(t *testing.T) {
 					}
 				})
 
-				conn.Close()
-				server.Stop()
-
 				expectedResponse := `[{"id":1,"name":"Test new event","open":true,"jobs":[{"id":1,"name":"Test","capacity":2,"count":0}],"organizer":{"id":1,"username":"user1"},"participants":[]},{"id":2,"name":"Test new event 2","open":true,"jobs":[{"id":1,"name":"Test 2","capacity":2,"count":0}],"organizer":{"id":1,"username":"user1"},"participants":[]}]`
 				return response == expectedResponse && err == nil
 			},
@@ -232,6 +238,10 @@ func TestSuccess(t *testing.T) {
 				go server.Start(&validSrvConfig)
 				conn, _ := connect(validClientConfig.FullUrl())
 				cli := network.CreateClientProtocol(conn, creds)
+				defer func() {
+					conn.Close()
+					server.Stop()
+				}()
 
 				cli.SendRequest("create", func(auth network.Auth) any {
 					return dto.EventCreate{
@@ -252,9 +262,6 @@ func TestSuccess(t *testing.T) {
 					}
 				})
 
-				conn.Close()
-				server.Stop()
-
 				expectedResponse := `{"id":1,"name":"Test new event","open":true,"jobs":[{"id":1,"name":"Test","capacity":2,"count":0}],"organizer":{"id":1,"username":"user1"},"participants":[]}`
 
 				return response == expectedResponse && err == nil
@@ -272,6 +279,10 @@ func TestSuccess(t *testing.T) {
 				go server.Start(&validSrvConfig)
 				conn, _ := connect(validClientConfig.FullUrl())
 				cli := network.CreateClientProtocol(conn, creds)
+				defer func() {
+					conn.Close()
+					server.Stop()
+				}()
 
 				cli.SendRequest("create", func(auth network.Auth) any {
 					return dto.EventCreate{
@@ -298,9 +309,6 @@ func TestSuccess(t *testing.T) {
 						Resume:  true,
 					}
 				})
-
-				conn.Close()
-				server.Stop()
 
 				expectedResponse := `{"id":1,"name":"Test new event","open":true,"jobs":[{"id":1,"name":"Test","capacity":2,"count":1}],"organizer":{"id":1,"username":"user1"},"participants":[{"user":{"id":1,"username":"user1"},"jobId":1}]}`
 
@@ -351,6 +359,10 @@ func TestErrors(t *testing.T) {
 				go server.Start(&validSrvConfig)
 				conn, _ := connect(validClientConfig.FullUrl())
 				cli := network.CreateClientProtocol(conn, creds)
+				defer func() {
+					conn.Close()
+					server.Stop()
+				}()
 
 				response, err := cli.SendRequest("create", func(auth network.Auth) any {
 					return dto.EventCreate{
@@ -365,9 +377,6 @@ func TestErrors(t *testing.T) {
 				})
 
 				fmt.Println("")
-
-				conn.Close()
-				server.Stop()
 
 				expectedResponse := `{"Success":false,"Auth":null}`
 
@@ -387,6 +396,10 @@ func TestErrors(t *testing.T) {
 				go server.Start(&validSrvConfig)
 				conn, _ := connect(validClientConfig.FullUrl())
 				cli := network.CreateClientProtocol(conn, creds)
+				defer func() {
+					conn.Close()
+					server.Stop()
+				}()
 
 				cli.SendRequest("create", func(auth network.Auth) any {
 					return dto.EventCreate{
@@ -411,9 +424,6 @@ func TestErrors(t *testing.T) {
 						EventId: 1,
 					}
 				})
-
-				conn.Close()
-				server.Stop()
 
 				expectedResponse := `false`
 
@@ -435,6 +445,10 @@ func TestErrors(t *testing.T) {
 				go server.Start(&validSrvConfig)
 				conn, _ := connect(validClientConfig.FullUrl())
 				cli := network.CreateClientProtocol(conn, creds)
+				defer func() {
+					conn.Close()
+					server.Stop()
+				}()
 
 				cli.SendRequest("create", func(auth network.Auth) any {
 					return dto.EventCreate{
@@ -459,9 +473,6 @@ func TestErrors(t *testing.T) {
 						EventId: 1,
 					}
 				})
-
-				conn.Close()
-				server.Stop()
 
 				expectedResponse := `false`
 
