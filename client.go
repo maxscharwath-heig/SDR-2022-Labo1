@@ -98,7 +98,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 		case "h":
 			utils.PrintHelp()
 		case "create":
-			response, err := protocol.SendRequest("create", func(auth network.Auth) any {
+			json, err := protocol.SendRequest("create", func(auth network.Auth) any {
 				event := dto.EventCreate{
 					Name: stringPrompt("Enter event name:"),
 				}
@@ -123,14 +123,16 @@ func clientProcess(configuration config.ClientConfiguration) {
 			if err != nil {
 				fmt.Println(colors.Red + err.Error() + colors.Reset)
 			} else {
-				if event := utils.FromJson[*dto.Event](response); event != nil {
-					fmt.Println(colors.Green + "Event created: " + event.Name + colors.Reset)
+				event, responseError := network.ParseResponse[*dto.Event](json)
+				if responseError != nil {
+					fmt.Println(colors.Red + responseError.Error() + colors.Reset)
 				} else {
-					fmt.Println(colors.Red + "Error creating event" + colors.Reset)
+					fmt.Println(colors.Green + "Event created: " + colors.Reset)
+					fmt.Println(event)
 				}
 			}
 		case "close":
-			response, err := protocol.SendRequest("close", func(auth network.Auth) any {
+			json, err := protocol.SendRequest("close", func(auth network.Auth) any {
 				return dto.EventClose{
 					EventId: intPrompt("Enter event id:"),
 				}
@@ -138,14 +140,16 @@ func clientProcess(configuration config.ClientConfiguration) {
 			if err != nil {
 				fmt.Println(colors.Red + err.Error() + colors.Reset)
 			} else {
-				if event := utils.FromJson[*dto.Event](response); event != nil {
-					fmt.Println(colors.Green + "Event closed: " + event.Name + colors.Reset)
+				event, responseError := network.ParseResponse[*dto.Event](json)
+				if responseError != nil {
+					fmt.Println(colors.Red + responseError.Error() + colors.Reset)
 				} else {
-					fmt.Println(colors.Red + "Error closing event" + colors.Reset)
+					fmt.Println(colors.Green + "Event closed: " + colors.Reset)
+					fmt.Println(event)
 				}
 			}
 		case "register":
-			response, err := protocol.SendRequest("register", func(auth network.Auth) any {
+			json, err := protocol.SendRequest("register", func(auth network.Auth) any {
 				return dto.EventRegister{
 					EventId: intPrompt("Enter event id:"),
 					JobId:   intPrompt("Enter job id:"),
@@ -154,11 +158,12 @@ func clientProcess(configuration config.ClientConfiguration) {
 			if err != nil {
 				fmt.Println(colors.Red + err.Error() + colors.Reset)
 			} else {
-				//result is bool
-				if success := utils.FromJson[bool](response); success == true {
-					fmt.Println(colors.Green + "Registration successful" + colors.Reset)
+				event, responseError := network.ParseResponse[*dto.Event](json)
+				if responseError != nil {
+					fmt.Println(colors.Red + responseError.Error() + colors.Reset)
 				} else {
-					fmt.Println(colors.Red + "Error registering" + colors.Reset)
+					fmt.Println(colors.Green + "Registered: " + colors.Reset)
+					fmt.Println(event)
 				}
 			}
 		case "show":
@@ -168,28 +173,36 @@ func clientProcess(configuration config.ClientConfiguration) {
 			} else {
 				eventId = -1
 			}
-			response, _ := protocol.SendRequest("show", func(auth network.Auth) any {
+			json, err := protocol.SendRequest("show", func(auth network.Auth) any {
 				return dto.EventShow{
 					EventId: eventId,
 					Resume:  flags["resume"],
 				}
 			})
-
-			if eventId != -1 {
-				event := utils.FromJson[*dto.Event](response)
-
-				if event == nil {
-					utils.LogError("This event does not exist")
-					break
-				}
-
-				if flags["resume"] {
-					displayEventFromIdResume(event)
-				} else {
-					displayEventFromId(event)
-				}
+			if err != nil {
+				fmt.Println(colors.Red + err.Error() + colors.Reset)
 			} else {
-				displayEvents(utils.FromJson[[]dto.Event](response))
+				if eventId != -1 {
+					event, responseError := network.ParseResponse[*dto.Event](json)
+
+					if responseError != nil {
+						fmt.Println(colors.Red + responseError.Error() + colors.Reset)
+						break
+					}
+
+					if flags["resume"] {
+						displayEventFromIdResume(event)
+					} else {
+						displayEventFromId(event)
+					}
+				} else {
+					events, responseError := network.ParseResponse[[]dto.Event](json)
+					if responseError != nil {
+						fmt.Println(colors.Red + responseError.Error() + colors.Reset)
+						break
+					}
+					displayEvents(events)
+				}
 			}
 		case "quit":
 			disconnect(conn)

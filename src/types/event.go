@@ -1,5 +1,7 @@
 package types
 
+import "fmt"
+
 type Event struct {
 	Id           int
 	Name         string
@@ -16,17 +18,17 @@ func (event *Event) Unregister(user *User) {
 	delete(event.Participants, user)
 }
 
-func (event *Event) Register(user *User, jobId int) bool {
+func (event *Event) Register(user *User, jobId int) error {
 	if user == nil {
-		return false
+		return fmt.Errorf("user is nil")
 	}
 	if job, ok := event.Jobs[jobId]; ok {
 		if job.Count < job.Capacity {
 			event.Unregister(user)
 			event.Participants[user] = job
 			job.Count++
-			return true
+			return nil
 		}
 	}
-	return false
+	return fmt.Errorf("job not found")
 }

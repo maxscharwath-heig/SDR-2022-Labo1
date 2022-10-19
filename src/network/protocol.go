@@ -60,6 +60,25 @@ func (r Request) GetJson(data any) {
 	_ = json.Unmarshal([]byte(r.Data), data)
 }
 
+type Response[T any] struct {
+	Success bool   `json:"success"`
+	Data    T      `json:"data,omitempty"`
+	Error   string `json:"error,omitempty"`
+}
+
+func ParseResponse[T any](data string) (res T, err error) {
+	var result Response[T]
+	err = json.Unmarshal([]byte(data), &result)
+	if err != nil {
+		return
+	}
+	if !result.Success {
+		err = fmt.Errorf(result.Error)
+		return
+	}
+	return result.Data, nil
+}
+
 // Endpoint
 // is the endpoint struct that is used to register an endpoint.
 //   - NeedsAuth: true if the endpoint needs authentication
@@ -67,7 +86,7 @@ func (r Request) GetJson(data any) {
 //     The function returns the response of the endpoint.
 type Endpoint struct {
 	NeedsAuth   bool
-	HandlerFunc func(request Request) any
+	HandlerFunc func(request Request) Response[any]
 }
 
 // connection

@@ -94,7 +94,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 func createEndpoint(chanData *chanData) network.Endpoint {
 	return network.Endpoint{
 		NeedsAuth: true,
-		HandlerFunc: func(request network.Request) any {
+		HandlerFunc: func(request network.Request) network.Response[any] {
 			events := <-chanData.events
 			startCriticSection("HandlerFunc(create)")
 			defer func() {
@@ -122,7 +122,10 @@ func createEndpoint(chanData *chanData) network.Endpoint {
 				}
 			}
 			events = append(events, event)
-			return dto.EventToDTO(event)
+			return network.Response[any]{
+				Success: true,
+				Data:    dto.EventToDTO(event),
+			}
 		},
 	}
 }
@@ -130,7 +133,7 @@ func createEndpoint(chanData *chanData) network.Endpoint {
 func showEndpoint(chanData *chanData) network.Endpoint {
 	return network.Endpoint{
 		NeedsAuth: false,
-		HandlerFunc: func(request network.Request) any {
+		HandlerFunc: func(request network.Request) network.Response[any] {
 			events := <-chanData.events
 			startCriticSection("HandlerFunc(show)")
 			defer func() {
@@ -144,12 +147,21 @@ func showEndpoint(chanData *chanData) network.Endpoint {
 			if data.EventId != -1 {
 				for _, ev := range events {
 					if ev.Id == data.EventId {
-						return dto.EventToDTO(ev)
+						return network.Response[any]{
+							Success: true,
+							Data:    dto.EventToDTO(ev),
+						}
 					}
 				}
-				return nil
+				return network.Response[any]{
+					Success: false,
+					Error:   "event not found",
+				}
 			}
-			return dto.EventsToDTO(events)
+			return network.Response[any]{
+				Success: true,
+				Data:    dto.EventsToDTO(events),
+			}
 		},
 	}
 }
@@ -157,7 +169,7 @@ func showEndpoint(chanData *chanData) network.Endpoint {
 func closeEndpoint(chanData *chanData) network.Endpoint {
 	return network.Endpoint{
 		NeedsAuth: true,
-		HandlerFunc: func(request network.Request) any {
+		HandlerFunc: func(request network.Request) network.Response[any] {
 			events := <-chanData.events
 			startCriticSection("HandlerFunc(close)")
 			defer func() {
@@ -171,13 +183,22 @@ func closeEndpoint(chanData *chanData) network.Endpoint {
 			for i, ev := range events {
 				if ev.Id == data.EventId {
 					if ev.Organizer.Id != request.Auth.Id {
-						return nil
+						return network.Response[any]{
+							Success: false,
+							Error:   "you are not the organizer of this event",
+						}
 					}
 					events[i].Open = false
-					return dto.EventToDTO(events[i])
+					return network.Response[any]{
+						Success: true,
+						Data:    dto.EventToDTO(events[i]),
+					}
 				}
 			}
-			return nil
+			return network.Response[any]{
+				Success: false,
+				Error:   "event not found",
+			}
 		},
 	}
 }
@@ -185,7 +206,7 @@ func closeEndpoint(chanData *chanData) network.Endpoint {
 func registerEndpoint(chanData *chanData) network.Endpoint {
 	return network.Endpoint{
 		NeedsAuth: true,
-		HandlerFunc: func(request network.Request) any {
+		HandlerFunc: func(request network.Request) network.Response[any] {
 			data := dto.EventRegister{}
 			request.GetJson(&data)
 
@@ -198,10 +219,19 @@ func registerEndpoint(chanData *chanData) network.Endpoint {
 
 			for _, ev := range events {
 				if ev.Id == data.EventId {
-					return ev.Register(request.Auth, data.JobId)
+					if err := ev.Register(request.Auth, data.JobId); err != nil {
+						return network.Response[any]{
+							Success: false,
+							Error:   err.Error(),
+						}
+					}
+					return network.Response[any]{Success: true, Data: dto.EventToDTO(ev)}
 				}
 			}
-			return false
+			return network.Response[any]{
+				Success: false,
+				Error:   "event not found",
+			}
 		},
 	}
 }
