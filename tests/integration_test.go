@@ -13,8 +13,7 @@ import (
 
 type cliTest struct {
 	description string
-	test        func(func() types.Credentials) bool
-	credentials func() types.Credentials
+	test        func() bool
 }
 
 var tests []cliTest
@@ -22,11 +21,8 @@ var tests []cliTest
 func connect(addr string) (*net.TCPConn, error) {
 	tcpAddr, _ := net.ResolveTCPAddr("tcp", addr)
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)
-
 	return conn, err
 }
-
-// TODO: encore un test pour voir que si on s'incrit deux fois ça garde que la derniere
 
 func TestSuccess(t *testing.T) {
 	validSrvConfig := config.ServerConfiguration{
@@ -37,6 +33,11 @@ func TestSuccess(t *testing.T) {
 				1,
 				"user1",
 				"pass1",
+			},
+			{
+				2,
+				"test",
+				"test",
 			},
 		},
 	}
@@ -49,8 +50,7 @@ func TestSuccess(t *testing.T) {
 	tests = []cliTest{
 		{
 			description: "Should connect to server",
-			test: func(creds func() types.Credentials) bool {
-
+			test: func() bool {
 				go server.Start(&validSrvConfig)
 				conn, err := connect(validClientConfig.FullUrl())
 				defer func() {
@@ -60,25 +60,24 @@ func TestSuccess(t *testing.T) {
 
 				return err == nil
 			},
-			credentials: func() types.Credentials {
-				return types.Credentials{
-					Username: "user1",
-					Password: "pass1",
-				}
-			},
 		},
 		{
 			description: "Should create event",
-			test: func(creds func() types.Credentials) bool {
+			test: func() bool {
 				go server.Start(&validSrvConfig)
 				conn, _ := connect(validClientConfig.FullUrl())
-				cli := network.CreateClientProtocol(conn, creds)
+				cli := network.CreateClientProtocol(conn, func() types.Credentials {
+					return types.Credentials{
+						Username: "user1",
+						Password: "pass1",
+					}
+				})
 				defer func() {
 					conn.Close()
 					server.Stop()
 				}()
 
-				response, err := cli.SendRequest("create", func(auth network.Auth) any {
+				json, _ := cli.SendRequest("create", func(auth network.Auth) any {
 					return dto.EventCreate{
 						Name: "Test new event",
 						Jobs: []dto.Job{
@@ -90,23 +89,22 @@ func TestSuccess(t *testing.T) {
 					}
 				})
 
-				expectedResponse := `{"id":1,"name":"Test new event","open":true,"jobs":[{"id":1,"name":"Test","capacity":2,"count":0}],"organizer":{"id":1,"username":"user1"},"participants":[]}`
+				event, responseError := network.ParseResponse[*dto.Event](json)
 
-				return response == expectedResponse && err == nil
-			},
-			credentials: func() types.Credentials {
-				return types.Credentials{
-					Username: "user1",
-					Password: "pass1",
-				}
+				return event.Name == "Test new event" && event.Jobs[0].Name == "Test" && event.Jobs[0].Capacity == 2 && responseError == nil
 			},
 		},
 		{
 			description: "Should close event",
-			test: func(creds func() types.Credentials) bool {
+			test: func() bool {
 				go server.Start(&validSrvConfig)
 				conn, _ := connect(validClientConfig.FullUrl())
-				cli := network.CreateClientProtocol(conn, creds)
+				cli := network.CreateClientProtocol(conn, func() types.Credentials {
+					return types.Credentials{
+						Username: "user1",
+						Password: "pass1",
+					}
+				})
 				defer func() {
 					conn.Close()
 					server.Stop()
@@ -124,29 +122,28 @@ func TestSuccess(t *testing.T) {
 					}
 				})
 
-				response, err := cli.SendRequest("close", func(auth network.Auth) any {
+				json, _ := cli.SendRequest("close", func(auth network.Auth) any {
 					return dto.EventClose{
 						EventId: 1,
 					}
 				})
 
-				expectedResponse := `{"id":1,"name":"Test new event","open":false,"jobs":[{"id":1,"name":"Test","capacity":2,"count":0}],"organizer":{"id":1,"username":"user1"},"participants":[]}`
+				event, responseError := network.ParseResponse[*dto.Event](json)
 
-				return response == expectedResponse && err == nil
-			},
-			credentials: func() types.Credentials {
-				return types.Credentials{
-					Username: "user1",
-					Password: "pass1",
-				}
+				return event.Open == false && responseError == nil
 			},
 		},
 		{
 			description: "Should register to event",
-			test: func(creds func() types.Credentials) bool {
+			test: func() bool {
 				go server.Start(&validSrvConfig)
 				conn, _ := connect(validClientConfig.FullUrl())
-				cli := network.CreateClientProtocol(conn, creds)
+				cli := network.CreateClientProtocol(conn, func() types.Credentials {
+					return types.Credentials{
+						Username: "user1",
+						Password: "pass1",
+					}
+				})
 				defer func() {
 					conn.Close()
 					server.Stop()
@@ -164,29 +161,29 @@ func TestSuccess(t *testing.T) {
 					}
 				})
 
-				response, err := cli.SendRequest("register", func(auth network.Auth) any {
+				json, _ := cli.SendRequest("register", func(auth network.Auth) any {
 					return dto.EventRegister{
 						EventId: 1,
 						JobId:   1,
 					}
 				})
 
-				expectedResponse := `true`
-				return response == expectedResponse && err == nil
-			},
-			credentials: func() types.Credentials {
-				return types.Credentials{
-					Username: "user1",
-					Password: "pass1",
-				}
+				event, responseError := network.ParseResponse[*dto.Event](json)
+
+				return event.Participants[0].User.Id == 1 && event.Participants[0].JobId == 1 && responseError == nil
 			},
 		},
 		{
 			description: "Should show all events",
-			test: func(creds func() types.Credentials) bool {
+			test: func() bool {
 				go server.Start(&validSrvConfig)
 				conn, _ := connect(validClientConfig.FullUrl())
-				cli := network.CreateClientProtocol(conn, creds)
+				cli := network.CreateClientProtocol(conn, func() types.Credentials {
+					return types.Credentials{
+						Username: "user1",
+						Password: "pass1",
+					}
+				})
 				defer func() {
 					conn.Close()
 					server.Stop()
@@ -215,29 +212,29 @@ func TestSuccess(t *testing.T) {
 					}
 				})
 
-				response, err := cli.SendRequest("show", func(auth network.Auth) any {
+				json, _ := cli.SendRequest("show", func(auth network.Auth) any {
 					return dto.EventShow{
 						EventId: -1,
 						Resume:  false,
 					}
 				})
 
-				expectedResponse := `[{"id":1,"name":"Test new event","open":true,"jobs":[{"id":1,"name":"Test","capacity":2,"count":0}],"organizer":{"id":1,"username":"user1"},"participants":[]},{"id":2,"name":"Test new event 2","open":true,"jobs":[{"id":1,"name":"Test 2","capacity":2,"count":0}],"organizer":{"id":1,"username":"user1"},"participants":[]}]`
-				return response == expectedResponse && err == nil
-			},
-			credentials: func() types.Credentials {
-				return types.Credentials{
-					Username: "user1",
-					Password: "pass1",
-				}
+				event, responseError := network.ParseResponse[[]*dto.Event](json)
+
+				return len(event) == 2 && responseError == nil
 			},
 		},
 		{
 			description: "Should show one event",
-			test: func(creds func() types.Credentials) bool {
+			test: func() bool {
 				go server.Start(&validSrvConfig)
 				conn, _ := connect(validClientConfig.FullUrl())
-				cli := network.CreateClientProtocol(conn, creds)
+				cli := network.CreateClientProtocol(conn, func() types.Credentials {
+					return types.Credentials{
+						Username: "user1",
+						Password: "pass1",
+					}
+				})
 				defer func() {
 					conn.Close()
 					server.Stop()
@@ -255,30 +252,29 @@ func TestSuccess(t *testing.T) {
 					}
 				})
 
-				response, err := cli.SendRequest("show", func(auth network.Auth) any {
+				json, _ := cli.SendRequest("show", func(auth network.Auth) any {
 					return dto.EventShow{
 						EventId: 1,
 						Resume:  false,
 					}
 				})
 
-				expectedResponse := `{"id":1,"name":"Test new event","open":true,"jobs":[{"id":1,"name":"Test","capacity":2,"count":0}],"organizer":{"id":1,"username":"user1"},"participants":[]}`
+				event, responseError := network.ParseResponse[*dto.Event](json)
 
-				return response == expectedResponse && err == nil
-			},
-			credentials: func() types.Credentials {
-				return types.Credentials{
-					Username: "user1",
-					Password: "pass1",
-				}
+				return event.Id == 1 && event.Name == "Test new event" && responseError == nil
 			},
 		},
 		{
 			description: "Should show one event's resume",
-			test: func(creds func() types.Credentials) bool {
+			test: func() bool {
 				go server.Start(&validSrvConfig)
 				conn, _ := connect(validClientConfig.FullUrl())
-				cli := network.CreateClientProtocol(conn, creds)
+				cli := network.CreateClientProtocol(conn, func() types.Credentials {
+					return types.Credentials{
+						Username: "user1",
+						Password: "pass1",
+					}
+				})
 				defer func() {
 					conn.Close()
 					server.Stop()
@@ -303,29 +299,79 @@ func TestSuccess(t *testing.T) {
 					}
 				})
 
-				response, err := cli.SendRequest("show", func(auth network.Auth) any {
+				json, _ := cli.SendRequest("show", func(auth network.Auth) any {
 					return dto.EventShow{
 						EventId: 1,
 						Resume:  true,
 					}
 				})
 
-				expectedResponse := `{"id":1,"name":"Test new event","open":true,"jobs":[{"id":1,"name":"Test","capacity":2,"count":1}],"organizer":{"id":1,"username":"user1"},"participants":[{"user":{"id":1,"username":"user1"},"jobId":1}]}`
-
-				return response == expectedResponse && err == nil
+				event, responseError := network.ParseResponse[*dto.Event](json)
+				return event.Id == 1 && event.Name == "Test new event" && responseError == nil
 			},
-			credentials: func() types.Credentials {
-				return types.Credentials{
-					Username: "user1",
-					Password: "pass1",
-				}
+		},
+		{
+			description: "Should not have duplicate registration",
+			test: func() bool {
+				go server.Start(&validSrvConfig)
+				conn, _ := connect(validClientConfig.FullUrl())
+				cli := network.CreateClientProtocol(conn, func() types.Credentials {
+					return types.Credentials{
+						Username: "user1",
+						Password: "pass1",
+					}
+				})
+				defer func() {
+					conn.Close()
+					server.Stop()
+				}()
+
+				cli.SendRequest("create", func(auth network.Auth) any {
+					return dto.EventCreate{
+						Name: "Test new event",
+						Jobs: []dto.Job{
+							{
+								Name:     "Test",
+								Capacity: 2,
+							},
+							{
+								Name:     "Test 2",
+								Capacity: 3,
+							},
+						},
+					}
+				})
+
+				cli.SendRequest("register", func(auth network.Auth) any {
+					return dto.EventRegister{
+						EventId: 1,
+						JobId:   1,
+					}
+				})
+
+				cli.SendRequest("register", func(auth network.Auth) any {
+					return dto.EventRegister{
+						EventId: 1,
+						JobId:   2,
+					}
+				})
+
+				json, _ := cli.SendRequest("show", func(auth network.Auth) any {
+					return dto.EventShow{
+						EventId: 1,
+						Resume:  true,
+					}
+				})
+
+				event, responseError := network.ParseResponse[*dto.Event](json)
+				return event.Participants[0].JobId == 2 && responseError == nil
 			},
 		},
 	}
 
 	for _, test := range tests {
 		fmt.Printf("TEST: %s: ", test.description)
-		if !test.test(test.credentials) {
+		if !test.test() {
 			t.Errorf("ERROR")
 		} else {
 			fmt.Println("Passed !")
@@ -343,6 +389,11 @@ func TestErrors(t *testing.T) {
 				"user1",
 				"pass1",
 			},
+			{
+				2,
+				"test",
+				"test",
+			},
 		},
 	}
 
@@ -353,18 +404,25 @@ func TestErrors(t *testing.T) {
 
 	tests = []cliTest{
 		{
-			description: "Should give error if invalid auth",
-			test: func(creds func() types.Credentials) bool {
+			description: "Should give error if invalid credentials",
+			test: func() bool {
 
 				go server.Start(&validSrvConfig)
 				conn, _ := connect(validClientConfig.FullUrl())
-				cli := network.CreateClientProtocol(conn, creds)
+
 				defer func() {
 					conn.Close()
 					server.Stop()
 				}()
 
-				response, err := cli.SendRequest("create", func(auth network.Auth) any {
+				cli := network.CreateClientProtocol(conn, func() types.Credentials {
+					return types.Credentials{
+						Username: "asd",
+						Password: "asd",
+					}
+				})
+
+				_, err := cli.SendRequest("create", func(auth network.Auth) any {
 					return dto.EventCreate{
 						Name: "Test new event",
 						Jobs: []dto.Job{
@@ -376,26 +434,20 @@ func TestErrors(t *testing.T) {
 					}
 				})
 
-				fmt.Println("")
-
-				expectedResponse := `{"Success":false,"Auth":null}`
-
-				return response == expectedResponse && err == nil
-			},
-			credentials: func() types.Credentials {
-				return types.Credentials{
-					Username: "coasceec",
-					Password: "psfasdadfasdf",
-				}
+				return err.Error() == "invalid credentials"
 			},
 		},
 		{
 			description: "Should not register to a closed event",
-			test: func(creds func() types.Credentials) bool {
-
+			test: func() bool {
 				go server.Start(&validSrvConfig)
 				conn, _ := connect(validClientConfig.FullUrl())
-				cli := network.CreateClientProtocol(conn, creds)
+				cli := network.CreateClientProtocol(conn, func() types.Credentials {
+					return types.Credentials{
+						Username: "user1",
+						Password: "pass1",
+					}
+				})
 				defer func() {
 					conn.Close()
 					server.Stop()
@@ -419,36 +471,34 @@ func TestErrors(t *testing.T) {
 					}
 				})
 
-				response, _ := cli.SendRequest("register", func(auth network.Auth) any {
+				json, _ := cli.SendRequest("register", func(auth network.Auth) any {
 					return dto.EventRegister{
 						EventId: 1,
 					}
 				})
 
-				expectedResponse := `false`
-
-				return response == expectedResponse
-			},
-			credentials: func() types.Credentials {
-				return types.Credentials{
-					Username: "user1",
-					Password: "pass1",
-				}
+				_, responseError := network.ParseResponse[*dto.Event](json)
+				return responseError.Error() == "job not found"
 			},
 		},
 		{
 			description: "Should not close event if not organizer",
-			test: func(creds func() types.Credentials) bool {
-
-				// TODO: comment changer de creds ?
+			test: func() bool {
 
 				go server.Start(&validSrvConfig)
 				conn, _ := connect(validClientConfig.FullUrl())
-				cli := network.CreateClientProtocol(conn, creds)
+
 				defer func() {
 					conn.Close()
 					server.Stop()
 				}()
+
+				cli := network.CreateClientProtocol(conn, func() types.Credentials {
+					return types.Credentials{
+						Username: "user1",
+						Password: "pass1",
+					}
+				})
 
 				cli.SendRequest("create", func(auth network.Auth) any {
 					return dto.EventCreate{
@@ -462,34 +512,60 @@ func TestErrors(t *testing.T) {
 					}
 				})
 
-				cli.SendRequest("close", func(auth network.Auth) any {
+				cli2 := network.CreateClientProtocol(conn, func() types.Credentials {
+					return types.Credentials{
+						Username: "test",
+						Password: "test",
+					}
+				})
+
+				json, _ := cli2.SendRequest("close", func(auth network.Auth) any {
 					return dto.EventClose{
 						EventId: 1,
 					}
 				})
 
-				response, _ := cli.SendRequest("register", func(auth network.Auth) any {
-					return dto.EventRegister{
-						EventId: 1,
+				_, responseError := network.ParseResponse[*dto.Event](json)
+
+				return responseError.Error() == "you are not the organizer of this event"
+			},
+		},
+		{
+			description: "Should not show if event does not exist",
+			test: func() bool {
+
+				go server.Start(&validSrvConfig)
+				conn, _ := connect(validClientConfig.FullUrl())
+
+				defer func() {
+					conn.Close()
+					server.Stop()
+				}()
+
+				cli := network.CreateClientProtocol(conn, func() types.Credentials {
+					return types.Credentials{
+						Username: "user1",
+						Password: "pass1",
 					}
 				})
 
-				expectedResponse := `false`
+				json, _ := cli.SendRequest("show", func(auth network.Auth) any {
+					return dto.EventShow{
+						EventId: 1,
+						Resume:  false,
+					}
+				})
 
-				return response == expectedResponse
-			},
-			credentials: func() types.Credentials {
-				return types.Credentials{
-					Username: "user1",
-					Password: "pass1",
-				}
+				_, responseError := network.ParseResponse[*dto.Event](json)
+
+				return responseError.Error() == "event not found"
 			},
 		},
 	}
 
 	for _, test := range tests {
 		fmt.Printf("TEST: %s: ", test.description)
-		if !test.test(test.credentials) {
+		if !test.test() {
 			t.Errorf("ERROR")
 		} else {
 			fmt.Println("Passed !")
