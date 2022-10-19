@@ -46,6 +46,8 @@ func TestSuccess(t *testing.T) {
 				"test",
 			},
 		},
+		Debug:         false,
+		ShowInfosLogs: false,
 	}
 
 	validClientConfig := config.ClientConfiguration{
