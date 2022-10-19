@@ -151,7 +151,11 @@ func (p ServerProtocol) Process(c net.Conn) {
 		}
 		var err error
 		request := Request{}
-		request.EndpointId, _ = conn.getLine()
+		request.EndpointId, err = conn.getLine()
+		if err != nil {
+			utils.LogError("error while receiving endpointId", err)
+			continue
+		}
 
 		endpoint, ok := p.Endpoints[request.EndpointId]
 		if ok {
@@ -161,7 +165,7 @@ func (p ServerProtocol) Process(c net.Conn) {
 
 		err = conn.sendJSON(request.Header)
 		if err != nil {
-			utils.LogError(err)
+			utils.LogError("error while sending header", err)
 			continue
 		}
 
@@ -175,7 +179,7 @@ func (p ServerProtocol) Process(c net.Conn) {
 
 			err = conn.getJson(&credentials)
 			if err != nil {
-				utils.LogError(err)
+				utils.LogError("error while receiving credentials", err)
 				continue
 			}
 
@@ -183,7 +187,7 @@ func (p ServerProtocol) Process(c net.Conn) {
 
 			err = conn.sendJSON(AuthResponse{isValid, auth})
 			if err != nil {
-				utils.LogError(err)
+				utils.LogError("error while sending auth response", err)
 				continue
 			}
 
@@ -193,12 +197,16 @@ func (p ServerProtocol) Process(c net.Conn) {
 				continue
 			}
 		}
-		request.Data, _ = conn.getLine()
+		request.Data, err = conn.getLine()
+		if err != nil {
+			utils.LogError("error while receiving data", err)
+			continue
+		}
 
 		response := endpoint.HandlerFunc(request)
 		err = conn.sendJSON(response)
 		if err != nil {
-			utils.LogError(err)
+			utils.LogError("error while sending response", err)
 			continue
 		}
 	}
