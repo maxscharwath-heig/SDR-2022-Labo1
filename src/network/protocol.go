@@ -116,7 +116,7 @@ func (c connection) isClosed() bool {
 
 // Send raw data to the connection
 func (c connection) sendData(data string) error {
-	utils.LogInfo("send", data)
+	utils.LogInfo(fmt.Sprintf("📤SEND TO  %s", c.conn.RemoteAddr().String()), data)
 	_, err := fmt.Fprintln(c.conn, data)
 	return err
 }
@@ -134,7 +134,7 @@ func (c connection) sendJSON(data any) error {
 func (c connection) getLine() (string, error) {
 	data, err := c.reader.ReadString('\n')
 	data = strings.Trim(data, "\n")
-	utils.LogInfo("recv", data, err)
+	utils.LogInfo(fmt.Sprintf("📥GOT FROM %s", c.conn.RemoteAddr().String()), data)
 	return data, err
 }
 
@@ -179,7 +179,7 @@ func (p ServerProtocol) Process(c net.Conn) {
 	var err error
 	for {
 		if conn.isClosed() || err == io.EOF {
-			utils.LogInfo("connection closed", c.RemoteAddr())
+			utils.LogWarning("connection closed", c.RemoteAddr())
 			break
 		}
 		request := Request{
@@ -187,7 +187,7 @@ func (p ServerProtocol) Process(c net.Conn) {
 		}
 		request.EndpointId, err = conn.getLine()
 		if err != nil {
-			utils.LogError("error while receiving endpointId", err)
+			utils.LogWarning("error while receiving endpointId", err)
 			continue
 		}
 
@@ -199,12 +199,12 @@ func (p ServerProtocol) Process(c net.Conn) {
 
 		err = conn.sendJSON(request.Header)
 		if err != nil {
-			utils.LogError("error while sending header", err)
+			utils.LogWarning("error while sending header", err)
 			continue
 		}
 
 		if !request.Header.Valid {
-			utils.LogError("invalid endpoint, canceling request")
+			utils.LogWarning("invalid endpoint, canceling request")
 			continue
 		}
 
@@ -213,7 +213,7 @@ func (p ServerProtocol) Process(c net.Conn) {
 
 			err = conn.getJson(&credentials)
 			if err != nil {
-				utils.LogError("error while receiving credentials", err)
+				utils.LogWarning("error while receiving credentials", err)
 				continue
 			}
 
@@ -221,26 +221,26 @@ func (p ServerProtocol) Process(c net.Conn) {
 
 			err = conn.sendJSON(AuthResponse{isValid, auth})
 			if err != nil {
-				utils.LogError("error while sending auth response", err)
+				utils.LogWarning("error while sending auth response", err)
 				continue
 			}
 
 			request.AuthId = auth
 			if !isValid {
-				utils.LogError("invalid credentials, canceling request")
+				utils.LogWarning("invalid credentials, canceling request")
 				continue
 			}
 		}
 		request.Data, err = conn.getLine()
 		if err != nil {
-			utils.LogError("error while receiving data", err)
+			utils.LogWarning("error while receiving data", err)
 			continue
 		}
 
 		response := endpoint.HandlerFunc(request)
 		err = conn.sendJSON(response)
 		if err != nil {
-			utils.LogError("error while sending response", err)
+			utils.LogWarning("error while sending response", err)
 			continue
 		}
 	}

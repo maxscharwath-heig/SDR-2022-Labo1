@@ -13,15 +13,19 @@ func SetEnabled(enable bool) {
 }
 
 func LogInfo(prefix string, data ...any) {
-	Log(false, prefix, colors.Yellow, data)
+	Log(false, fmt.Sprintf("ℹ️ INFO (%s)", prefix), colors.Blue, data...)
+}
+
+func LogWarning(prefix string, data ...any) {
+	Log(false, fmt.Sprintf("⚠️ WARNING (%s)", prefix), colors.Yellow, data...)
 }
 
 func LogSuccess(prefix string, data ...any) {
-	Log(false, prefix, colors.Green, data)
+	Log(false, fmt.Sprintf("✅ SUCCESS (%s)", prefix), colors.Green, data...)
 }
 
-func LogError(data ...any) {
-	Log(false, "error", colors.Red, data)
+func LogError(prefix string, data ...any) {
+	Log(false, fmt.Sprintf("❌ ERROR (%s)", prefix), colors.Red, data...)
 }
 
 func Log(force bool, prefix string, color string, data ...any) {
@@ -30,7 +34,7 @@ func Log(force bool, prefix string, color string, data ...any) {
 	}
 	date := time.Now().Format("2006-01-02 15:04:05")
 	var result []any
-	result = append(result, color+fmt.Sprintf("[%s] (%s):", date, prefix)+colors.Reset)
+	result = append(result, color+fmt.Sprintf("[%s] %s:", date, prefix)+colors.Reset)
 	result = append(result, data...)
 	fmt.Println(result...)
 }

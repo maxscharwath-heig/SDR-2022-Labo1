@@ -1,7 +1,9 @@
 package server
 
 import (
+	"encoding/hex"
 	"fmt"
+	"math/rand"
 	"net"
 	"os"
 	"sdr/labo1/src/config"
@@ -29,9 +31,7 @@ func Stop() {
 func Start(serverConfiguration *config.ServerConfiguration) {
 	utils.SetEnabled(serverConfiguration.ShowInfosLogs)
 	enableCriticDebug = serverConfiguration.Debug
-	if enableCriticDebug {
-		utils.LogInfo("Debug mode enabled")
-	}
+	utils.LogInfo("debug mode", enableCriticDebug)
 
 	l, err := net.Listen("tcp", serverConfiguration.FullUrl())
 	if err != nil {
@@ -39,7 +39,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 		os.Exit(1)
 	}
 
-	utils.LogSuccess("Listening on " + serverConfiguration.FullUrl())
+	utils.LogSuccess("Server started", serverConfiguration.FullUrl())
 
 	//init chan data structure
 	chanData := ChanData{
@@ -55,10 +55,11 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 
 	protocol := network.ServerProtocol{
 		AuthFunc: func(credential types.Credentials) (bool, network.AuthId) {
+			start, end := createCriticalSection("users", "AuthFunc")
 			users := <-chanData.users
-			startCriticSection("AuthFunc")
+			start()
 			defer func() {
-				endCriticSection("AuthFunc")
+				end()
 				chanData.users <- users
 			}()
 			if credential.Username == "" || credential.Password == "" {
@@ -96,10 +97,11 @@ func createEndpoint(chanData *ChanData) network.Endpoint {
 	return network.Endpoint{
 		NeedsAuth: true,
 		HandlerFunc: func(request network.Request) network.Response[any] {
+			start, end := createCriticalSection("events", "HandlerFunc(create)")
 			events := <-chanData.events
-			startCriticSection("HandlerFunc(create)")
+			start()
 			defer func() {
-				endCriticSection("HandlerFunc(create)")
+				end()
 				chanData.events <- events
 			}()
 
@@ -145,10 +147,11 @@ func showEndpoint(chanData *ChanData) network.Endpoint {
 	return network.Endpoint{
 		NeedsAuth: false,
 		HandlerFunc: func(request network.Request) network.Response[any] {
+			start, end := createCriticalSection("events", "HandlerFunc(show)")
 			events := <-chanData.events
-			startCriticSection("HandlerFunc(show)")
+			start()
 			defer func() {
-				endCriticSection("HandlerFunc(show)")
+				end()
 				chanData.events <- events
 			}()
 
@@ -172,10 +175,11 @@ func closeEndpoint(chanData *ChanData) network.Endpoint {
 	return network.Endpoint{
 		NeedsAuth: true,
 		HandlerFunc: func(request network.Request) network.Response[any] {
+			start, end := createCriticalSection("events", "HandlerFunc(close)")
 			events := <-chanData.events
-			startCriticSection("HandlerFunc(close)")
+			start()
 			defer func() {
-				endCriticSection("HandlerFunc(close)")
+				end()
 				chanData.events <- events
 			}()
 
@@ -203,10 +207,11 @@ func registerEndpoint(chanData *ChanData) network.Endpoint {
 			data := dto.EventRegister{}
 			request.GetJson(&data)
 
+			start, end := createCriticalSection("events", "HandlerFunc(register)")
 			events := <-chanData.events
-			startCriticSection("HandlerFunc(register)")
+			start()
 			defer func() {
-				endCriticSection("HandlerFunc(register)")
+				end()
 				chanData.events <- events
 			}()
 
@@ -227,26 +232,33 @@ func delayer(sec time.Duration) {
 	time.Sleep(time.Second * sec)
 }
 
-func startCriticSection(section string) {
-	if !enableCriticDebug {
-		return
-	}
-	utils.Log(true, "START CRITICAL SECTION", colors.BackgroundRed, section)
-	delayer(5)
-}
+func createCriticalSection(chanName string, name string) (start func(), end func()) {
+	b := make([]byte, 4)
+	_, _ = rand.Read(b)
+	id := hex.EncodeToString(b)
 
-func endCriticSection(section string) {
-	if !enableCriticDebug {
-		return
+	start = func() {
+		if !enableCriticDebug {
+			return
+		}
+		utils.Log(true, fmt.Sprintf("CRITIC START [%s]", id), colors.BackgroundRed, fmt.Sprintf("🔒%s\t%s", chanName, name))
+		delayer(5)
 	}
-	utils.Log(true, "END CRITICAL SECTION", colors.BackgroundRed, section)
+	end = func() {
+		if !enableCriticDebug {
+			return
+		}
+		utils.Log(true, fmt.Sprintf("CRITIC END   [%s]", id), colors.BackgroundRed, fmt.Sprintf("🔓%s\t%s", chanName, name))
+	}
+	return
 }
 
 func getUserById(id int, chanData *ChanData) types.User {
+	start, end := createCriticalSection("users", fmt.Sprintf("getUserById(%d)", id))
 	users := <-chanData.users
-	startCriticSection(fmt.Sprintf("getUserById(%d)", id))
+	start()
 	defer func() {
-		endCriticSection(fmt.Sprintf("getUserById(%d)", id))
+		end()
 		chanData.users <- users
 	}()
 	if user, ok := users[id]; ok {

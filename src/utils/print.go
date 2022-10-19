@@ -42,11 +42,11 @@ func PrintTable(headers []string, data []string) {
 	writer := tabwriter.NewWriter(os.Stdout, 0, 8, 3, '\t', tabwriter.AlignRight)
 
 	formattedHeaders := strings.Join(headers[:], "\t")
-	fmt.Fprintln(writer, formattedHeaders)
+	_, _ = fmt.Fprintln(writer, formattedHeaders)
 
 	for _, row := range data {
-		fmt.Fprintln(writer, row)
+		_, _ = fmt.Fprintln(writer, row)
 	}
 
-	writer.Flush()
+	_ = writer.Flush()
 }
