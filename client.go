@@ -88,7 +88,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 	})
 	protocol.OnClose(func() {
 		fmt.Println()
-		fmt.Println(colors.Red + "Connection closed by server" + colors.Reset)
+		PrintError("Connection closed by server")
 		os.Exit(1)
 	})
 	utils.PrintHelp()
@@ -122,13 +122,13 @@ func clientProcess(configuration config.ClientConfiguration) {
 				return event
 			})
 			if err != nil {
-				fmt.Println(colors.Red + err.Error() + colors.Reset)
+				PrintError(err.Error())
 			} else {
 				event, responseError := network.ParseResponse[*dto.Event](json)
 				if responseError != nil {
-					fmt.Println(colors.Red + responseError.Error() + colors.Reset)
+					PrintError(responseError.Error())
 				} else {
-					fmt.Println(colors.Green + "Event created: " + colors.Reset)
+					PrintSuccess(fmt.Sprintf("Event created: %s#%d", event.Name, event.Id))
 					displayEventFromId(event)
 				}
 			}
@@ -139,14 +139,13 @@ func clientProcess(configuration config.ClientConfiguration) {
 				}
 			})
 			if err != nil {
-				fmt.Println(colors.Red + err.Error() + colors.Reset)
+				PrintError(err.Error())
 			} else {
 				event, responseError := network.ParseResponse[*dto.Event](json)
 				if responseError != nil {
-					fmt.Println(colors.Red + responseError.Error() + colors.Reset)
+					PrintError(responseError.Error())
 				} else {
-					fmt.Println(colors.Green + "Event closed: " + colors.Reset)
-					displayEventFromId(event)
+					PrintSuccess(fmt.Sprintf("Event closed: %s#%d", event.Name, event.Id))
 				}
 			}
 		case "register":
@@ -161,10 +160,9 @@ func clientProcess(configuration config.ClientConfiguration) {
 			} else {
 				event, responseError := network.ParseResponse[*dto.Event](json)
 				if responseError != nil {
-					fmt.Println(colors.Red + responseError.Error() + colors.Reset)
+					PrintError(responseError.Error())
 				} else {
-					fmt.Println(colors.Green + "Registered: " + colors.Reset)
-					displayEventFromId(event)
+					PrintSuccess(fmt.Sprintf("Registered to event: %s#%d", event.Name, event.Id))
 				}
 			}
 		case "show":
@@ -185,7 +183,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 					event, responseError := network.ParseResponse[*dto.Event](json)
 
 					if responseError != nil {
-						fmt.Println(colors.Red + responseError.Error() + colors.Reset)
+						PrintError(responseError.Error())
 						break
 					}
 
@@ -197,7 +195,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 				} else {
 					events, responseError := network.ParseResponse[[]dto.Event](json)
 					if responseError != nil {
-						fmt.Println(colors.Red + responseError.Error() + colors.Reset)
+						PrintError(responseError.Error())
 						break
 					}
 					displayEvents(events)
@@ -207,9 +205,8 @@ func clientProcess(configuration config.ClientConfiguration) {
 			disconnect(conn)
 			return
 		default:
-			utils.LogError("Invalid command, try again")
+			PrintError("Invalid command, try again")
 		}
-		fmt.Println("")
 	}
 }
 
@@ -233,10 +230,10 @@ func connect(protocol string, address string) *net.TCPConn {
 	isConnecting <- true
 	fmt.Print(colors.Reset)
 	if err != nil {
-		fmt.Println(colors.Red+"Connection failed", colors.Reset)
+		PrintError("Connection failed")
 		os.Exit(1)
 	}
-	fmt.Println(colors.Green+"Connection established", colors.Reset)
+	PrintSuccess("Connection established")
 	return conn
 }
 
@@ -312,6 +309,14 @@ func formattedJobRow(username string, row []bool) string {
 		}
 	}
 	return strings.Join(values, "\t")
+}
+
+func PrintSuccess(message string) {
+	fmt.Println("✅ " + colors.Green + message + colors.Reset)
+}
+
+func PrintError(message string) {
+	fmt.Println("❌ " + colors.Red + message + colors.Reset)
 }
 
 func main() {

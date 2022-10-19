@@ -516,6 +516,50 @@ func TestErrors(t *testing.T) {
 		expectError(t, responseError, "you are not the organizer")
 	})
 
+	t.Run("should not close event if already closed", func(t *testing.T) {
+		go server.Start(&validSrvConfig)
+		conn, _ := connect(validClientConfig.FullUrl())
+		cli := network.CreateClientProtocol(conn, func() types.Credentials {
+			return types.Credentials{
+				Username: "user1",
+				Password: "pass1",
+			}
+		})
+
+		t.Cleanup(func() {
+			_ = conn.Close()
+			server.Stop()
+		})
+
+		_, _ = cli.SendRequest("create", func(auth network.AuthId) any {
+			return dto.EventCreate{
+				Name: "Test new event",
+				Jobs: []dto.Job{
+					{
+						Name:     "Test",
+						Capacity: 2,
+					},
+				},
+			}
+		})
+
+		_, _ = cli.SendRequest("close", func(auth network.AuthId) any {
+			return dto.EventClose{
+				EventId: 1,
+			}
+		})
+
+		json, _ := cli.SendRequest("close", func(auth network.AuthId) any {
+			return dto.EventClose{
+				EventId: 1,
+			}
+		})
+
+		_, responseError := network.ParseResponse[*dto.Event](json)
+
+		expectError(t, responseError, "event already closed")
+	})
+
 	t.Run("should not show if event does not exist", func(t *testing.T) {
 		go server.Start(&validSrvConfig)
 		conn, _ := connect(validClientConfig.FullUrl())

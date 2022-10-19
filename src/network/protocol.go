@@ -133,7 +133,7 @@ func (c connection) sendJSON(data any) error {
 // Get a line from the connection ( without the newline )
 func (c connection) getLine() (string, error) {
 	data, err := c.reader.ReadString('\n')
-	data = strings.Trim(data, "\n")
+	data = strings.TrimSpace(data)
 	utils.LogInfo(fmt.Sprintf("📥GOT FROM %s", c.conn.RemoteAddr().String()), data)
 	return data, err
 }

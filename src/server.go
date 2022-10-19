@@ -97,14 +97,6 @@ func createEndpoint(chanData *ChanData) network.Endpoint {
 	return network.Endpoint{
 		NeedsAuth: true,
 		HandlerFunc: func(request network.Request) network.Response[any] {
-			start, end := createCriticalSection("events", "HandlerFunc(create)")
-			events := <-chanData.events
-			start()
-			defer func() {
-				end()
-				chanData.events <- events
-			}()
-
 			data := dto.EventCreate{}
 			request.GetJson(&data)
 
@@ -113,7 +105,6 @@ func createEndpoint(chanData *ChanData) network.Endpoint {
 			}
 
 			event := &types.Event{
-				Id:           len(events) + 1,
 				Name:         data.Name,
 				Open:         true,
 				OrganizerId:  request.AuthId,
@@ -137,6 +128,14 @@ func createEndpoint(chanData *ChanData) network.Endpoint {
 					Capacity: job.Capacity,
 				}
 			}
+			start, end := createCriticalSection("events", "HandlerFunc(create)")
+			events := <-chanData.events
+			start()
+			defer func() {
+				end()
+				chanData.events <- events
+			}()
+			event.Id = len(events) + 1
 			events = append(events, event)
 			return network.CreateResponse(true, EventToDTO(event, chanData))
 		},
@@ -147,6 +146,9 @@ func showEndpoint(chanData *ChanData) network.Endpoint {
 	return network.Endpoint{
 		NeedsAuth: false,
 		HandlerFunc: func(request network.Request) network.Response[any] {
+			data := dto.EventShow{}
+			request.GetJson(&data)
+
 			start, end := createCriticalSection("events", "HandlerFunc(show)")
 			events := <-chanData.events
 			start()
@@ -154,9 +156,6 @@ func showEndpoint(chanData *ChanData) network.Endpoint {
 				end()
 				chanData.events <- events
 			}()
-
-			data := dto.EventShow{}
-			request.GetJson(&data)
 
 			if data.EventId != -1 {
 				for _, ev := range events {
@@ -175,6 +174,9 @@ func closeEndpoint(chanData *ChanData) network.Endpoint {
 	return network.Endpoint{
 		NeedsAuth: true,
 		HandlerFunc: func(request network.Request) network.Response[any] {
+			data := dto.EventClose{}
+			request.GetJson(&data)
+
 			start, end := createCriticalSection("events", "HandlerFunc(close)")
 			events := <-chanData.events
 			start()
@@ -183,13 +185,13 @@ func closeEndpoint(chanData *ChanData) network.Endpoint {
 				chanData.events <- events
 			}()
 
-			data := dto.EventClose{}
-			request.GetJson(&data)
-
 			for i, ev := range events {
 				if ev.Id == data.EventId {
 					if ev.OrganizerId != request.AuthId {
 						return network.CreateResponse(false, "you are not the organizer")
+					}
+					if !ev.Open {
+						return network.CreateResponse(false, "event already closed")
 					}
 					events[i].Open = false
 					return network.CreateResponse(true, EventToDTO(events[i], chanData))
