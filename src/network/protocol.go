@@ -253,8 +253,9 @@ func CreateClientProtocol(conn net.Conn, authFunc func() types.Credentials) *Cli
 
 // SendRequest
 // Send a request to the server
-// - endpointId: the endpointId of the endpoint that should be called
-// - data: the function that is called after the response is received and the authentication is done.
+//   - endpointId: the endpointId of the endpoint that should be called
+//   - data: the function that is called after the response is received and the authentication is done
+//     The function returns the response of the endpoint.
 func (p ClientProtocol) SendRequest(endpointId string, data func(auth Auth) any) (response string, err error) {
 	err = p.conn.sendData(endpointId)
 

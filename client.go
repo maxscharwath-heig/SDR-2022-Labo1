@@ -84,10 +84,12 @@ func clientProcess(configuration config.ClientConfiguration) {
 	conn := connect("tcp", configuration.FullUrl())
 	protocol := network.CreateClientProtocol(conn, authenticate)
 	go func() {
-		if protocol.IsClosed() {
-			fmt.Println()
-			fmt.Println(colors.Yellow + "Connection closed by server" + colors.Reset)
-			os.Exit(1)
+		for {
+			if protocol.IsClosed() {
+				fmt.Println()
+				fmt.Println(colors.Yellow + "Connection closed by server" + colors.Reset)
+				os.Exit(1)
+			}
 		}
 	}()
 	utils.PrintHelp()
@@ -167,11 +169,9 @@ func clientProcess(configuration config.ClientConfiguration) {
 				}
 			}
 		case "show":
-			eventId := 0
+			eventId := -1
 			if len(args) > 0 {
 				eventId, _ = strconv.Atoi(args[0])
-			} else {
-				eventId = -1
 			}
 			json, err := protocol.SendRequest("show", func(auth network.Auth) any {
 				return dto.EventShow{
