@@ -66,7 +66,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 			}
 			for _, user := range users {
 				if user.Username == credential.Username && user.Password == credential.Password {
-					return true, -1
+					return true, user.Id
 				}
 			}
 			return false, -1

@@ -91,11 +91,13 @@ func TestSuccess(t *testing.T) {
 		event, responseError := network.ParseResponse[*dto.Event](json)
 		expect(t, responseError, nil)
 		expect(t, event.Name, "Test new event")
+		expect(t, event.Organizer.Id, 1)
 		expect(t, event.Jobs[0].Name, "Test")
 		expect(t, event.Jobs[0].Capacity, 2)
+		expect(t, event.Open, true)
 	})
 
-	t.Run("should create event", func(t *testing.T) {
+	t.Run("should close event", func(t *testing.T) {
 		go server.Start(&validSrvConfig)
 		conn, _ := connect(validClientConfig.FullUrl())
 		cli := network.CreateClientProtocol(conn, func() types.Credentials {
@@ -507,11 +509,9 @@ func TestErrors(t *testing.T) {
 			}
 		})
 
-		response, responseError := network.ParseResponse[*dto.Event](json)
+		_, responseError := network.ParseResponse[*dto.Event](json)
 
-		t.Log(response, responseError)
-
-		expectError(t, responseError, "you are not the organizer of this event")
+		expectError(t, responseError, "you are not the organizer")
 	})
 
 	t.Run("should not show if event does not exist", func(t *testing.T) {
