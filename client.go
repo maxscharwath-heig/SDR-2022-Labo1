@@ -86,15 +86,11 @@ func clientProcess(configuration config.ClientConfiguration) {
 	core.OnSigTerm(func() {
 		disconnect(conn)
 	})
-	go func() {
-		for {
-			if protocol.IsClosed() {
-				fmt.Println()
-				fmt.Println(colors.Yellow + "Connection closed by server" + colors.Reset)
-				os.Exit(1)
-			}
-		}
-	}()
+	protocol.OnClose(func() {
+		fmt.Println()
+		fmt.Println(colors.Red + "Connection closed by server" + colors.Reset)
+		os.Exit(1)
+	})
 	utils.PrintHelp()
 	for {
 		cmd, args, flags := parseArgs(stringPrompt("Enter command [press h for help]:"))
@@ -245,6 +241,7 @@ func connect(protocol string, address string) *net.TCPConn {
 }
 
 func disconnect(conn net.Conn) {
+	fmt.Print(colors.Yellow+"Disconnecting", colors.Reset)
 	conn.Close()
 }
 

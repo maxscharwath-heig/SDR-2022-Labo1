@@ -51,6 +51,7 @@ type AuthFunc func(credentials types.Credentials) (bool, AuthId)
 
 // Request is the request struct
 type Request struct {
+	Conn       net.Conn
 	EndpointId string
 	Header     HeaderResponse
 	AuthId     AuthId
@@ -171,7 +172,9 @@ func (p ServerProtocol) Process(c net.Conn) {
 			fmt.Println("connection closed")
 			break
 		}
-		request := Request{}
+		request := Request{
+			Conn: conn.conn,
+		}
 		request.EndpointId, err = conn.getLine()
 		if err != nil {
 			utils.LogError("error while receiving endpointId", err)
@@ -305,4 +308,15 @@ func (p ClientProtocol) Close() error {
 
 func (p ClientProtocol) IsClosed() bool {
 	return p.conn.isClosed()
+}
+
+func (p ClientProtocol) OnClose(handler func()) {
+	go func() {
+		for {
+			if p.IsClosed() {
+				handler()
+				break
+			}
+		}
+	}()
 }
