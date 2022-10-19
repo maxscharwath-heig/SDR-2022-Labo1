@@ -22,6 +22,14 @@ func expect(t *testing.T, value any, expected any) {
 	}
 }
 
+func expectError(t *testing.T, err error, expected string) {
+	if err == nil {
+		t.Errorf("Expected error %v, got nil", expected)
+	} else if err.Error() != expected {
+		t.Errorf("Expected error %v, got %v", expected, err.Error())
+	}
+}
+
 func TestSuccess(t *testing.T) {
 	validSrvConfig := config.ServerConfiguration{
 		Host: "localhost",
@@ -412,7 +420,7 @@ func TestErrors(t *testing.T) {
 			}
 		})
 
-		expect(t, err.Error(), "invalid credentials")
+		expectError(t, err, "invalid credentials")
 	})
 
 	t.Run("should not register to a closed event", func(t *testing.T) {
@@ -455,7 +463,7 @@ func TestErrors(t *testing.T) {
 		})
 
 		_, responseError := network.ParseResponse[*dto.Event](json)
-		expect(t, responseError.Error(), "job not found")
+		expectError(t, responseError, "job not found")
 	})
 
 	t.Run("should not close event if not organizer", func(t *testing.T) {
@@ -499,9 +507,11 @@ func TestErrors(t *testing.T) {
 			}
 		})
 
-		_, responseError := network.ParseResponse[*dto.Event](json)
+		response, responseError := network.ParseResponse[*dto.Event](json)
 
-		expect(t, responseError.Error(), "you are not the organizer of this event")
+		t.Log(response, responseError)
+
+		expectError(t, responseError, "you are not the organizer of this event")
 	})
 
 	t.Run("should not show if event does not exist", func(t *testing.T) {
@@ -529,7 +539,7 @@ func TestErrors(t *testing.T) {
 
 		_, responseError := network.ParseResponse[*dto.Event](json)
 
-		expect(t, responseError.Error(), "event not found")
+		expectError(t, responseError, "event not found")
 	})
 
 	t.Run("should have error if empty event name", func(t *testing.T) {
@@ -562,7 +572,7 @@ func TestErrors(t *testing.T) {
 
 		_, responseError := network.ParseResponse[*dto.Event](json)
 
-		expect(t, responseError.Error(), "name is required")
+		expectError(t, responseError, "name is required")
 	})
 
 	t.Run("should have error if empty job name", func(t *testing.T) {
@@ -595,7 +605,7 @@ func TestErrors(t *testing.T) {
 
 		_, responseError := network.ParseResponse[*dto.Event](json)
 
-		expect(t, responseError.Error(), "name is required")
+		expectError(t, responseError, "name is required")
 	})
 
 	t.Run("should have error if empty job capacity", func(t *testing.T) {
@@ -628,6 +638,6 @@ func TestErrors(t *testing.T) {
 
 		_, responseError := network.ParseResponse[*dto.Event](json)
 
-		expect(t, responseError.Error(), "capacity must be greater than 0")
+		expectError(t, responseError, "capacity must be greater than 0")
 	})
 }
