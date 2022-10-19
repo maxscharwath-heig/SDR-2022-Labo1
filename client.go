@@ -83,6 +83,9 @@ func clientProcess(configuration config.ClientConfiguration) {
 	utils.PrintClientWelcome()
 	conn := connect("tcp", configuration.FullUrl())
 	protocol := network.CreateClientProtocol(conn, authenticate)
+	core.OnSigTerm(func() {
+		disconnect(conn)
+	})
 	go func() {
 		for {
 			if protocol.IsClosed() {

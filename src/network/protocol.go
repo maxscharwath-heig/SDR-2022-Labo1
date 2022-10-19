@@ -15,6 +15,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"sdr/labo1/src/types"
 	"sdr/labo1/src/utils"
@@ -164,11 +165,12 @@ func (p ServerProtocol) Process(c net.Conn) {
 		conn:   c,
 		reader: bufio.NewReader(c),
 	}
+	var err error
 	for {
-		if conn.isClosed() {
+		if conn.isClosed() || err == io.EOF {
+			fmt.Println("connection closed")
 			break
 		}
-		var err error
 		request := Request{}
 		request.EndpointId, err = conn.getLine()
 		if err != nil {
