@@ -51,6 +51,7 @@ func intPrompt(label string) int {
 	}
 }
 
+// authenticate prompts the user for his credentials
 func authenticate() types.Credentials {
 	return types.Credentials{
 		Username: stringPrompt("Enter username:"),
@@ -58,6 +59,8 @@ func authenticate() types.Credentials {
 	}
 }
 
+// parseArgs parses the command line arguments
+// and returns the command, the arguments and the flags
 func parseArgs(cmdRaw string) (string, []string, map[string]bool) {
 	parsed := strings.Split(cmdRaw, " ")
 	cmd := parsed[0]
@@ -75,6 +78,7 @@ func parseArgs(cmdRaw string) (string, []string, map[string]bool) {
 	return cmd, args, flags
 }
 
+// clientProcess is the main function of the client
 func clientProcess(configuration config.ClientConfiguration) {
 	utils.PrintClientWelcome()
 	conn := connect("tcp", configuration.FullUrl())
@@ -94,7 +98,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 		case "h":
 			utils.PrintHelp()
 		case "create":
-			fmt.Println(protocol.SendRequest("create", func(auth network.Auth) any {
+			response, err := protocol.SendRequest("create", func(auth network.Auth) any {
 				event := dto.EventCreate{
 					Name: stringPrompt("Enter event name:"),
 				}
@@ -115,20 +119,48 @@ func clientProcess(configuration config.ClientConfiguration) {
 				}
 				event.Jobs = jobs
 				return event
-			}))
+			})
+			if err != nil {
+				fmt.Println(colors.Red + err.Error() + colors.Reset)
+			} else {
+				if event := utils.FromJson[*dto.Event](response); event != nil {
+					fmt.Println(colors.Green + "Event created: " + event.Name + colors.Reset)
+				} else {
+					fmt.Println(colors.Red + "Error creating event" + colors.Reset)
+				}
+			}
 		case "close":
-			fmt.Println(protocol.SendRequest("close", func(auth network.Auth) any {
+			response, err := protocol.SendRequest("close", func(auth network.Auth) any {
 				return dto.EventClose{
 					EventId: intPrompt("Enter event id:"),
 				}
-			}))
+			})
+			if err != nil {
+				fmt.Println(colors.Red + err.Error() + colors.Reset)
+			} else {
+				if event := utils.FromJson[*dto.Event](response); event != nil {
+					fmt.Println(colors.Green + "Event closed: " + event.Name + colors.Reset)
+				} else {
+					fmt.Println(colors.Red + "Error closing event" + colors.Reset)
+				}
+			}
 		case "register":
-			fmt.Println(protocol.SendRequest("register", func(auth network.Auth) any {
+			response, err := protocol.SendRequest("register", func(auth network.Auth) any {
 				return dto.EventRegister{
 					EventId: intPrompt("Enter event id:"),
 					JobId:   intPrompt("Enter job id:"),
 				}
-			}))
+			})
+			if err != nil {
+				fmt.Println(colors.Red + err.Error() + colors.Reset)
+			} else {
+				//result is bool
+				if success := utils.FromJson[bool](response); success == true {
+					fmt.Println(colors.Green + "Registration successful" + colors.Reset)
+				} else {
+					fmt.Println(colors.Red + "Error registering" + colors.Reset)
+				}
+			}
 		case "show":
 			eventId := 0
 			if len(args) > 0 {
