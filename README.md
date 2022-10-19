@@ -98,6 +98,17 @@ Affiche l'état des postes d'une manifestation.
 
 ![show-resume](./docs/show-resume.png)
 
+## Tests
+
+Pour exécuter les tests, lancez la commande :
+> `go test ./tests/integration_test.go`
+
+Pour effectuer des tests manuels sur la concurrence et sur le protocole, modifiez la configuration du serveur pour ralentir
+les entrées en zones critiques :
+> `"debug": false`
+
+
+
 ## Limitations
 
 Il n'y a pas de persistance des données au-delà de l'exécution du serveur.

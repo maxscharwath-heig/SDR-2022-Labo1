@@ -561,6 +561,114 @@ func TestErrors(t *testing.T) {
 				return responseError.Error() == "event not found"
 			},
 		},
+		{
+			description: "Should have error if empty event name",
+			test: func() bool {
+
+				go server.Start(&validSrvConfig)
+				conn, _ := connect(validClientConfig.FullUrl())
+
+				defer func() {
+					conn.Close()
+					server.Stop()
+				}()
+
+				cli := network.CreateClientProtocol(conn, func() types.Credentials {
+					return types.Credentials{
+						Username: "user1",
+						Password: "pass1",
+					}
+				})
+
+				json, _ := cli.SendRequest("create", func(auth network.AuthId) any {
+					return dto.EventCreate{
+						Name: "",
+						Jobs: []dto.Job{
+							{
+								Name:     "Test",
+								Capacity: 2,
+							},
+						},
+					}
+				})
+
+				_, responseError := network.ParseResponse[*dto.Event](json)
+
+				return responseError.Error() == "name is required"
+			},
+		},
+		{
+			description: "Should have error if empty job name",
+			test: func() bool {
+
+				go server.Start(&validSrvConfig)
+				conn, _ := connect(validClientConfig.FullUrl())
+
+				defer func() {
+					conn.Close()
+					server.Stop()
+				}()
+
+				cli := network.CreateClientProtocol(conn, func() types.Credentials {
+					return types.Credentials{
+						Username: "user1",
+						Password: "pass1",
+					}
+				})
+
+				json, _ := cli.SendRequest("create", func(auth network.AuthId) any {
+					return dto.EventCreate{
+						Name: "Event",
+						Jobs: []dto.Job{
+							{
+								Name:     "",
+								Capacity: 2,
+							},
+						},
+					}
+				})
+
+				_, responseError := network.ParseResponse[*dto.Event](json)
+
+				return responseError.Error() == "name is required"
+			},
+		},
+		{
+			description: "Should have error if invalid job capacity",
+			test: func() bool {
+
+				go server.Start(&validSrvConfig)
+				conn, _ := connect(validClientConfig.FullUrl())
+
+				defer func() {
+					conn.Close()
+					server.Stop()
+				}()
+
+				cli := network.CreateClientProtocol(conn, func() types.Credentials {
+					return types.Credentials{
+						Username: "user1",
+						Password: "pass1",
+					}
+				})
+
+				json, _ := cli.SendRequest("create", func(auth network.AuthId) any {
+					return dto.EventCreate{
+						Name: "Event",
+						Jobs: []dto.Job{
+							{
+								Name:     "test",
+								Capacity: -1,
+							},
+						},
+					}
+				})
+
+				_, responseError := network.ParseResponse[*dto.Event](json)
+
+				return responseError.Error() == "capacity must be greater than 0"
+			},
+		},
 	}
 
 	for _, test := range tests {
