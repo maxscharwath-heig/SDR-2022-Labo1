@@ -30,8 +30,8 @@ type Auth = *types.User
 // - Valid: true if the endpoint is valid
 // - NeedsAuth: true if the endpoint needs authentication
 type HeaderResponse struct {
-	Valid     bool
-	NeedsAuth bool
+	Valid     bool `json:"valid"`
+	NeedsAuth bool `json:"needsAuth"`
 }
 
 // AuthResponse
@@ -39,8 +39,8 @@ type HeaderResponse struct {
 // - Success: true if the authentication was successful
 // - Auth: the authentication data ( see: type Auth )
 type AuthResponse struct {
-	Success bool
-	Auth    Auth
+	Success bool `json:"success"`
+	Auth    Auth `json:"auth"`
 }
 
 // AuthFunc

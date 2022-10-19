@@ -128,7 +128,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 					fmt.Println(colors.Red + responseError.Error() + colors.Reset)
 				} else {
 					fmt.Println(colors.Green + "Event created: " + colors.Reset)
-					fmt.Println(event)
+					displayEventFromId(event)
 				}
 			}
 		case "close":
@@ -145,7 +145,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 					fmt.Println(colors.Red + responseError.Error() + colors.Reset)
 				} else {
 					fmt.Println(colors.Green + "Event closed: " + colors.Reset)
-					fmt.Println(event)
+					displayEventFromId(event)
 				}
 			}
 		case "register":
@@ -163,7 +163,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 					fmt.Println(colors.Red + responseError.Error() + colors.Reset)
 				} else {
 					fmt.Println(colors.Green + "Registered: " + colors.Reset)
-					fmt.Println(event)
+					displayEventFromId(event)
 				}
 			}
 		case "show":
