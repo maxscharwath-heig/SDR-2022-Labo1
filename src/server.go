@@ -249,7 +249,10 @@ func getUserById(id int, chanData *ChanData) types.User {
 		endCriticSection(fmt.Sprintf("getUserById(%d)", id))
 		chanData.users <- users
 	}()
-	return *users[id]
+	if user, ok := users[id]; ok {
+		return *user
+	}
+	return types.User{}
 }
 
 // CONVERSIONS

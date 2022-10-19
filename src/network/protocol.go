@@ -179,7 +179,7 @@ func (p ServerProtocol) Process(c net.Conn) {
 	var err error
 	for {
 		if conn.isClosed() || err == io.EOF {
-			fmt.Println("connection closed")
+			utils.LogInfo("connection closed", c.RemoteAddr())
 			break
 		}
 		request := Request{
