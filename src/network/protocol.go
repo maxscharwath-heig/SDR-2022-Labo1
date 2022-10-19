@@ -68,6 +68,16 @@ type Response[T any] struct {
 	Error   string `json:"error,omitempty"`
 }
 
+func CreateResponse(success bool, data any) (response Response[any]) {
+	response.Success = success
+	if success {
+		response.Data = data
+	} else {
+		response.Error = data.(string)
+	}
+	return
+}
+
 func ParseResponse[T any](data string) (res T, err error) {
 	var result Response[T]
 	err = json.Unmarshal([]byte(data), &result)

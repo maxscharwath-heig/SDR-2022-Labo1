@@ -106,6 +106,10 @@ func createEndpoint(chanData *ChanData) network.Endpoint {
 			data := dto.EventCreate{}
 			request.GetJson(&data)
 
+			if data.Name == "" {
+				return network.CreateResponse(false, "name is required")
+			}
+
 			event := &types.Event{
 				Id:           len(events) + 1,
 				Name:         data.Name,
@@ -116,6 +120,15 @@ func createEndpoint(chanData *ChanData) network.Endpoint {
 			}
 			for i, job := range data.Jobs {
 				id := i + 1
+
+				if job.Capacity < 1 {
+					return network.CreateResponse(false, "capacity must be greater than 0")
+				}
+
+				if job.Name == "" {
+					return network.CreateResponse(false, "name is required")
+				}
+
 				event.Jobs[id] = &types.Job{
 					Id:       id,
 					Name:     job.Name,
@@ -123,10 +136,7 @@ func createEndpoint(chanData *ChanData) network.Endpoint {
 				}
 			}
 			events = append(events, event)
-			return network.Response[any]{
-				Success: true,
-				Data:    EventToDTO(event, chanData),
-			}
+			return network.CreateResponse(true, EventToDTO(event, chanData))
 		},
 	}
 }
@@ -148,21 +158,12 @@ func showEndpoint(chanData *ChanData) network.Endpoint {
 			if data.EventId != -1 {
 				for _, ev := range events {
 					if ev.Id == data.EventId {
-						return network.Response[any]{
-							Success: true,
-							Data:    EventToDTO(ev, chanData),
-						}
+						return network.CreateResponse(true, EventToDTO(ev, chanData))
 					}
 				}
-				return network.Response[any]{
-					Success: false,
-					Error:   "event not found",
-				}
+				return network.CreateResponse(false, "event not found")
 			}
-			return network.Response[any]{
-				Success: true,
-				Data:    EventsToDTO(events, chanData),
-			}
+			return network.CreateResponse(true, EventsToDTO(events, chanData))
 		},
 	}
 }
@@ -184,22 +185,13 @@ func closeEndpoint(chanData *ChanData) network.Endpoint {
 			for i, ev := range events {
 				if ev.Id == data.EventId {
 					if ev.OrganizerId != request.AuthId {
-						return network.Response[any]{
-							Success: false,
-							Error:   "you are not the organizer of this event",
-						}
+						return network.CreateResponse(false, "you are not the organizer")
 					}
 					events[i].Open = false
-					return network.Response[any]{
-						Success: true,
-						Data:    EventToDTO(events[i], chanData),
-					}
+					return network.CreateResponse(true, EventToDTO(events[i], chanData))
 				}
 			}
-			return network.Response[any]{
-				Success: false,
-				Error:   "event not found",
-			}
+			return network.CreateResponse(false, "event not found")
 		},
 	}
 }
@@ -221,18 +213,12 @@ func registerEndpoint(chanData *ChanData) network.Endpoint {
 			for _, ev := range events {
 				if ev.Id == data.EventId {
 					if err := ev.Register(request.AuthId, data.JobId); err != nil {
-						return network.Response[any]{
-							Success: false,
-							Error:   err.Error(),
-						}
+						return network.CreateResponse(false, err.Error())
 					}
-					return network.Response[any]{Success: true, Data: EventToDTO(ev, chanData)}
+					return network.CreateResponse(true, EventToDTO(ev, chanData))
 				}
 			}
-			return network.Response[any]{
-				Success: false,
-				Error:   "event not found",
-			}
+			return network.CreateResponse(false, "event not found")
 		},
 	}
 }
