@@ -161,7 +161,8 @@ func TestSuccess(t *testing.T) {
 		event, responseError := network.ParseResponse[*dto.Event](json)
 
 		expect(t, responseError, nil)
-		expect(t, event.Jobs[0].Capacity, 1)
+		expect(t, event.Jobs[0].Capacity, 2)
+		expect(t, event.Jobs[0].Count, 1)
 		expect(t, event.Participants[0].JobId, 1)
 	})
 
