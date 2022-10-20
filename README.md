@@ -38,6 +38,10 @@ La configuration du client se trouve dans [`client.json`](./client.json):
 
 ## Utilisation
 
+> **Warning**
+> Pour une utilisabilité optimale, il est recommandé d'utiliser un terminal qui supporte les couleurs et les emojis.
+> Fonctionne sur Windows Terminal et sur le terminal de MacOS.
+
 ### Lancer le serveur (directement, ou via un exécutable)
 
 > `go run server.go`
@@ -98,9 +102,26 @@ Affiche l'état des postes d'une manifestation.
 
 ![show-resume](./docs/show-resume.png)
 
+## Protocole de communication
+Le protocole de communication est basé sur le protocole TCP. Les messages sont sérialisés en JSON.
+1. Le client envoie une chaîne de caractères au serveur appelée `Endpoint` qui indique la fonctionnalité à appeler.
+2. Le serveur va répondre avec un message de type `Header` qui indique si le `Endpoint` existe et si l'utilisateur doit être authentifié.
+3. Si la requête nécessite une authentification, le client envoie un message de type `Credentials` avec les identifiants de l'utilisateur.
+4. Si l'authentification est réussie, le serveur envoie un message de type `AuthResponse` qui indique si les identifiants sont valides.
+5. Le client envoie n'importe quel type de message qui correspond à la fonctionnalité demandée.
+6. Le serveur envoie un message de type `Response` qui indique si la requête a été traitée avec succès ou non et contient le résultat de la requête.
+
+Les données sont envoyées sur le réseau sous forme de chaînes de caractères finissant par un caractère de fin de ligne `\n`.
+
+Nous utilisons des structure de type DTO (Data Transfer Object) pour sérialiser les données afin de faciliter la lecture et l'écriture des messages.
+
 ## Tests
 
 ### Intégration
+
+> **Warning**
+> Les testes vont créer des serveurs et des clients qui vont communiquer entre eux.
+> Il est donc nécessaire de s'assurer que le port `9001` soit disponible.
 
 Pour exécuter les tests, lancez la commande :
 > `go test ./tests/integration_test.go`
@@ -119,7 +140,6 @@ Il suffit ensuite de démarrer un serveur et plusieurs clients
 En exécutant des commandes depuis les clients, on peut observer les entrées / sorties en sections critiques sur le serveur:
 
 ![debug](./docs/debug.png)
-
 
 ## Limitations
 
