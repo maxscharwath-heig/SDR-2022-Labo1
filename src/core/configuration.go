@@ -1,3 +1,6 @@
+// SDR - Labo 1
+// Nicolas Crausaz & Maxime Scharwath
+
 package core
 
 import (
@@ -6,6 +9,7 @@ import (
 	"os"
 )
 
+// ReadConfig reads a JSON configuration file to a configuration struct type
 func ReadConfig[T any](path string, config T) T {
 	file, err := os.Open(path)
 	if err != nil {

@@ -1,3 +1,6 @@
+// SDR - Labo 1
+// Nicolas Crausaz & Maxime Scharwath
+
 package colors
 
 var Reset = "\033[0m"

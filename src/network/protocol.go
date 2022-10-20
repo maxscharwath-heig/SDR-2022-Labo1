@@ -1,3 +1,6 @@
+// SDR - Labo 1
+// Nicolas Crausaz & Maxime Scharwath
+
 // Package network
 // This package contains the network protocol for the client and server
 // The protocol is a simple JSON based protocol
@@ -46,7 +49,7 @@ type AuthResponse struct {
 
 // AuthFunc
 // is the function that is called to authenticate the user.
-// Returns true if the authentication was successful and the authentication data. ( see: type AuthId )
+// Returns true if the authentication was successful and the authentication data. (see: type AuthId)
 type AuthFunc func(credentials types.Credentials) (bool, AuthId)
 
 // Request is the request struct
@@ -58,6 +61,7 @@ type Request struct {
 	Data       string
 }
 
+// GetJson
 func (r Request) GetJson(data any) {
 	_ = json.Unmarshal([]byte(r.Data), data)
 }

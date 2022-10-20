@@ -1,3 +1,6 @@
+// SDR - Labo 1
+// Nicolas Crausaz & Maxime Scharwath
+
 package config
 
 import (
@@ -6,12 +9,14 @@ import (
 	"sdr/labo1/src/types"
 )
 
+// UserWithPassword
 type UserWithPassword struct {
 	Id       int    `json:"id"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
+// ServerConfiguration contains the information
 type ServerConfiguration struct {
 	Host          string             `json:"host"`
 	Port          int                `json:"port"`

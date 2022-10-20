@@ -13,7 +13,6 @@ import (
 	"sdr/labo1/src/types"
 	"sdr/labo1/src/utils"
 	"sdr/labo1/src/utils/colors"
-	"sdr/labo1/src/utils/levenstein"
 	"strconv"
 	"strings"
 	"syscall"
@@ -206,10 +205,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 			disconnect(conn)
 			return
 		default:
-			couldBe := levenstein.SearchBestMatch(cmd, []string{
-				"create", "close", "register", "show", "quit",
-			})
-			PrintError(fmt.Sprintf("Unknown command \"%s\", did you mean \"%s\"?", cmd, couldBe))
+			PrintError(fmt.Sprintf("Unknown command \"%s\"", cmd))
 		}
 	}
 }
