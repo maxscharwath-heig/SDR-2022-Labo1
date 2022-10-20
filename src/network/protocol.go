@@ -52,7 +52,7 @@ type AuthResponse struct {
 // Returns true if the authentication was successful and the authentication data. (see: type AuthId)
 type AuthFunc func(credentials types.Credentials) (bool, AuthId)
 
-// Request is the request struct
+// Request defines the format of client to server communication
 type Request struct {
 	Conn       net.Conn
 	EndpointId string
@@ -65,12 +65,14 @@ func (r Request) GetJson(data any) {
 	_ = json.Unmarshal([]byte(r.Data), data)
 }
 
+// Response defines the format of server to client communication
 type Response[T any] struct {
 	Success bool   `json:"success"`
 	Data    T      `json:"data,omitempty"`
 	Error   string `json:"error,omitempty"`
 }
 
+// CreateResponse creates a response to be sent to a client
 func CreateResponse(success bool, data any) (response Response[any]) {
 	response.Success = success
 	if success {
@@ -81,6 +83,7 @@ func CreateResponse(success bool, data any) (response Response[any]) {
 	return
 }
 
+// ParseResponse parse a response to a struct
 func ParseResponse[T any](data string) (res T, err error) {
 	var result Response[T]
 	err = json.Unmarshal([]byte(data), &result)
@@ -315,14 +318,17 @@ func (p ClientProtocol) SendRequest(endpointId string, data func(auth AuthId) an
 	return p.conn.getLine()
 }
 
+// Close close client connexion
 func (p ClientProtocol) Close() error {
 	return p.Conn.Close()
 }
 
+// IsClosed check client's connection status
 func (p ClientProtocol) IsClosed() bool {
 	return p.conn.isClosed()
 }
 
+// OnClose Execute handler on client connexion close
 func (p ClientProtocol) OnClose(handler func()) {
 	go func() {
 		for {

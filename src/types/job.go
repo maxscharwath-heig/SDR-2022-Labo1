@@ -5,6 +5,7 @@ package types
 
 import "fmt"
 
+// Job contains all the data of an event's job
 type Job struct {
 	Id       int    `json:"id"`
 	Name     string `json:"name"`

@@ -13,6 +13,7 @@ import (
 
 var enabled = true
 
+// SetEnabled enable trace login globally
 func SetEnabled(enable bool) {
 	enabled = enable
 }
