@@ -5,12 +5,6 @@
 
 ![sdr](./docs/sdr-client.png)
 
-## Installation
-
-Installez les dépendances du projet avec la commande :
-
-`go get -d`
-
 ## Configuration
 
 La configuration du serveur et du client sont séparées dans deux fichiers différents.
@@ -20,7 +14,7 @@ La configuration du serveur se trouve dans [`server.json`](./server.json):
 ```json
   "host": "localhost",    // IP / nom DNS du serveur
   "port": 9000,           // Port d'écoute du serveur
-  "debug": false,         // Mode de debug de la concurence, ralenti les entrées en sections critique
+  "debug": false,         // Mode de debug de la concurence, ralenti les entrées en section critique
   "showInfosLogs": false, // Active l'affichage des données brutes lors des communications
   "users": [...],         // Utilisateurs enregistrés
   "events": [...]         // Evénements enregistrés
@@ -38,22 +32,22 @@ La configuration du client se trouve dans [`client.json`](./client.json):
 
 ## Utilisation
 
-> **Warning**
+> **Attention**
 > Pour une utilisabilité optimale, il est recommandé d'utiliser un terminal qui supporte les couleurs et les emojis.
 > Fonctionne sur Windows Terminal, terminal de MacOS et Linux.
 
 ### Lancer le serveur (directement, ou via un exécutable)
 
-> `go run server.go`
-> ou
+> `go run server.go` \
+> ou \
 > `go build server.go && ./server`
 
 Le serveur attendra des connexions sur le port TCP configuré dans `server.json`
 
 ### Lancer un client (directement, ou via un exécutable)
 
-> `go run client.go`
-> ou
+> `go run client.go` \
+> ou  \
 > `go build client.go && ./client`
 
 Le client se connectera au serveur configuré dans `client.json`
@@ -115,14 +109,14 @@ Le protocole de communication est basé sur le protocole TCP. Les messages sont 
 
 Les données sont envoyées sur le réseau sous forme de chaînes de caractères finissant par un caractère de fin de ligne `\n`.
 
-Nous utilisons des structure de type DTO (Data Transfer Object) pour sérialiser les données afin de faciliter la lecture et l'écriture des messages.
+Nous utilisons des structures de type DTO (Data Transfer Object) pour sérialiser les données afin de faciliter la lecture et l'écriture des messages.
 
 ## Tests
 
 ### Intégration
 
-> **Warning**
-> Les testes vont créer des serveurs et des clients qui vont communiquer entre eux.
+> **Attention**
+> Les tests vont créer des serveurs et des clients qui vont communiquer entre eux.
 > Il est donc nécessaire de s'assurer que le port `9001` soit disponible.
 
 Pour exécuter les tests, lancez la commande :
@@ -136,8 +130,8 @@ les entrées en zones critiques :
 
 Il suffit ensuite de démarrer un serveur et plusieurs clients
 
-> go run server.go
-> go run client.go (selon le nombre de clients souhaités)
+> `go run server.go` \
+> `go run client.go` (selon le nombre de clients souhaités)
 
 En exécutant des commandes depuis les clients, on peut observer les entrées / sorties en sections critiques sur le serveur:
 
