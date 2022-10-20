@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"golang.org/x/term"
 	"net"
 	"os"
 	"sdr/labo1/src/config"
@@ -15,67 +13,15 @@ import (
 	"sdr/labo1/src/utils/colors"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
-
-func stringPrompt(label string) string {
-	for {
-		fmt.Print(label + " ")
-		reader := bufio.NewReader(os.Stdin)
-		input, err := reader.ReadString('\n')
-		if err == nil {
-			return strings.TrimSpace(input)
-		}
-	}
-}
-
-func passPrompt(label string) string {
-	fmt.Print(label + " ")
-	pass, _ := term.ReadPassword(int(syscall.Stdin))
-	fmt.Println("****")
-	return string(pass)
-}
-
-// intPrompt asks for an int value using the label
-func intPrompt(label string) int {
-	for {
-		fmt.Print(label + " ")
-		var input string
-		_, err := fmt.Scanln(&input)
-		if err == nil {
-			if i, err := strconv.Atoi(input); err == nil {
-				return i
-			}
-		}
-	}
-}
 
 // authenticate prompts the user for his credentials
 func authenticate() types.Credentials {
 	return types.Credentials{
-		Username: stringPrompt("Enter username:"),
-		Password: passPrompt("Enter password:"),
+		Username: utils.StringPrompt("Enter username:"),
+		Password: utils.PassPrompt("Enter password:"),
 	}
-}
-
-// parseArgs parses the command line arguments
-// and returns the command, the arguments and the flags
-func parseArgs(cmdRaw string) (string, []string, map[string]bool) {
-	parsed := strings.Split(cmdRaw, " ")
-	cmd := parsed[0]
-	var args []string
-	flags := make(map[string]bool)
-	for _, arg := range parsed[1:] {
-		if strings.HasPrefix(arg, "--") {
-			flags[strings.TrimPrefix(arg, "--")] = true
-		} else if strings.HasPrefix(arg, "-") {
-			flags[strings.TrimPrefix(arg, "-")] = true
-		} else {
-			args = append(args, arg)
-		}
-	}
-	return cmd, args, flags
 }
 
 // clientProcess is the main function of the client
@@ -88,12 +34,12 @@ func clientProcess(configuration config.ClientConfiguration) {
 	})
 	protocol.OnClose(func() {
 		fmt.Println()
-		PrintError("Connection closed by server")
+		utils.PrintError("Connection closed by server")
 		os.Exit(1)
 	})
 	utils.PrintHelp()
 	for {
-		cmd, args, flags := parseArgs(stringPrompt("Enter command [press h for help]:"))
+		cmd, args, flags := utils.ParseArgs(utils.StringPrompt("Enter command [press h for help]:"))
 
 		switch cmd {
 		case "h":
@@ -101,16 +47,16 @@ func clientProcess(configuration config.ClientConfiguration) {
 		case "create":
 			json, err := protocol.SendRequest("create", func(auth network.AuthId) any {
 				event := dto.EventCreate{
-					Name: stringPrompt("Enter event name:"),
+					Name: utils.StringPrompt("Enter event name:"),
 				}
 				jobsMap := make(map[string]dto.Job)
 				for {
 					job := dto.Job{
-						Name:     stringPrompt("Enter job name:"),
-						Capacity: intPrompt("Enter job capacity:"),
+						Name:     utils.StringPrompt("Enter job name:"),
+						Capacity: utils.IntPrompt("Enter job capacity:"),
 					}
 					jobsMap[job.Name] = job
-					if stringPrompt("Add another job? [y/n]") == "n" {
+					if utils.StringPrompt("Add another job? [y/n]") == "n" {
 						break
 					}
 				}
@@ -122,37 +68,37 @@ func clientProcess(configuration config.ClientConfiguration) {
 				return event
 			})
 			if err != nil {
-				PrintError(err.Error())
+				utils.PrintError(err.Error())
 			} else {
 				event, responseError := network.ParseResponse[*dto.Event](json)
 				if responseError != nil {
-					PrintError(responseError.Error())
+					utils.PrintError(responseError.Error())
 				} else {
-					PrintSuccess(fmt.Sprintf("Event created: %s#%d", event.Name, event.Id))
+					utils.PrintSuccess(fmt.Sprintf("Event created: %s#%d", event.Name, event.Id))
 					displayEventFromId(event)
 				}
 			}
 		case "close":
 			json, err := protocol.SendRequest("close", func(auth network.AuthId) any {
 				return dto.EventClose{
-					EventId: intPrompt("Enter event id:"),
+					EventId: utils.IntPrompt("Enter event id:"),
 				}
 			})
 			if err != nil {
-				PrintError(err.Error())
+				utils.PrintError(err.Error())
 			} else {
 				event, responseError := network.ParseResponse[*dto.Event](json)
 				if responseError != nil {
-					PrintError(responseError.Error())
+					utils.PrintError(responseError.Error())
 				} else {
-					PrintSuccess(fmt.Sprintf("Event closed: %s#%d", event.Name, event.Id))
+					utils.PrintSuccess(fmt.Sprintf("Event closed: %s#%d", event.Name, event.Id))
 				}
 			}
 		case "register":
 			json, err := protocol.SendRequest("register", func(auth network.AuthId) any {
 				return dto.EventRegister{
-					EventId: intPrompt("Enter event id:"),
-					JobId:   intPrompt("Enter job id:"),
+					EventId: utils.IntPrompt("Enter event id:"),
+					JobId:   utils.IntPrompt("Enter job id:"),
 				}
 			})
 			if err != nil {
@@ -160,9 +106,9 @@ func clientProcess(configuration config.ClientConfiguration) {
 			} else {
 				event, responseError := network.ParseResponse[*dto.Event](json)
 				if responseError != nil {
-					PrintError(responseError.Error())
+					utils.PrintError(responseError.Error())
 				} else {
-					PrintSuccess(fmt.Sprintf("Registered to event: %s#%d", event.Name, event.Id))
+					utils.PrintSuccess(fmt.Sprintf("Registered to event: %s#%d", event.Name, event.Id))
 				}
 			}
 		case "show":
@@ -183,7 +129,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 					event, responseError := network.ParseResponse[*dto.Event](json)
 
 					if responseError != nil {
-						PrintError(responseError.Error())
+						utils.PrintError(responseError.Error())
 						break
 					}
 
@@ -195,7 +141,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 				} else {
 					events, responseError := network.ParseResponse[[]dto.Event](json)
 					if responseError != nil {
-						PrintError(responseError.Error())
+						utils.PrintError(responseError.Error())
 						break
 					}
 					displayEvents(events)
@@ -205,11 +151,12 @@ func clientProcess(configuration config.ClientConfiguration) {
 			disconnect(conn)
 			return
 		default:
-			PrintError(fmt.Sprintf("Unknown command \"%s\"", cmd))
+			utils.PrintError(fmt.Sprintf("Unknown command \"%s\"", cmd))
 		}
 	}
 }
 
+// connect makes client connects to server
 func connect(protocol string, address string) *net.TCPConn {
 	fmt.Print(colors.Yellow + "Connecting")
 	// print dots while connecting
@@ -230,18 +177,20 @@ func connect(protocol string, address string) *net.TCPConn {
 	isConnecting <- true
 	fmt.Print(colors.Reset)
 	if err != nil {
-		PrintError("Connection failed")
+		utils.PrintError("Connection failed")
 		os.Exit(1)
 	}
-	PrintSuccess("Connection established")
+	utils.PrintSuccess("Connection established")
 	return conn
 }
 
+// disconnect quit the client's connection
 func disconnect(conn net.Conn) {
 	fmt.Print(colors.Yellow+"Disconnecting", colors.Reset)
 	conn.Close()
 }
 
+// Display events as table format
 func displayEvents(events []dto.Event) {
 	headers := []string{"Number", "Name", "Organizer name", "open"}
 	var printableEventRows []string
@@ -252,6 +201,7 @@ func displayEvents(events []dto.Event) {
 	utils.PrintTable(headers, printableEventRows)
 }
 
+// Display an event as table format
 func displayEventFromId(event *dto.Event) {
 	if event == nil {
 		return
@@ -269,6 +219,7 @@ func displayEventFromId(event *dto.Event) {
 	utils.PrintTable(headers, printableJobsRow)
 }
 
+// Display an event's resume as table format
 func displayEventFromIdResume(event *dto.Event) {
 	if event == nil {
 		return
@@ -309,14 +260,6 @@ func formattedJobRow(username string, row []bool) string {
 		}
 	}
 	return strings.Join(values, "\t")
-}
-
-func PrintSuccess(message string) {
-	fmt.Println("✅ " + colors.Green + message + colors.Reset)
-}
-
-func PrintError(message string) {
-	fmt.Println("❌ " + colors.Red + message + colors.Reset)
 }
 
 func main() {

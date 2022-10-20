@@ -55,3 +55,11 @@ func PrintTable(headers []string, data []string) {
 
 	_ = writer.Flush()
 }
+
+func PrintSuccess(message string) {
+	fmt.Println("✅ " + colors.Green + message + colors.Reset)
+}
+
+func PrintError(message string) {
+	fmt.Println("❌ " + colors.Red + message + colors.Reset)
+}
