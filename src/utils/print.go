@@ -40,6 +40,7 @@ func PrintHelp() {
 	fmt.Println("- show")
 	fmt.Println("- show [number]")
 	fmt.Println("- show [number] --resume")
+	fmt.Println("- quit")
 	fmt.Println("_________________________")
 }
 
