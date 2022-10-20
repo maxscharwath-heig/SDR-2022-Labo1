@@ -40,7 +40,7 @@ La configuration du client se trouve dans [`client.json`](./client.json):
 
 > **Warning**
 > Pour une utilisabilité optimale, il est recommandé d'utiliser un terminal qui supporte les couleurs et les emojis.
-> Fonctionne sur Windows Terminal et sur le terminal de MacOS.
+> Fonctionne sur Windows Terminal, terminal de MacOS et Linux.
 
 ### Lancer le serveur (directement, ou via un exécutable)
 
@@ -48,13 +48,15 @@ La configuration du client se trouve dans [`client.json`](./client.json):
 > ou
 > `go build server.go && ./server`
 
-Le serveur attendra des connexions sur le port TCP configuré dans `config/server.json`
+Le serveur attendra des connexions sur le port TCP configuré dans `server.json`
 
 ### Lancer un client (directement, ou via un exécutable)
 
 > `go run client.go`
 > ou
 > `go build client.go && ./client`
+
+Le client se connectera au serveur configuré dans `client.json`
 
 ### Liste de commandes disponible
 
