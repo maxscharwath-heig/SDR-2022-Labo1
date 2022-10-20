@@ -9,7 +9,7 @@ import (
 	"sdr/labo1/src/types"
 )
 
-// UserWithPassword
+// UserWithPassword contains the user credentials for authentication
 type UserWithPassword struct {
 	Id       int    `json:"id"`
 	Username string `json:"username"`
@@ -26,10 +26,12 @@ type ServerConfiguration struct {
 	ShowInfosLogs bool               `json:"showInfosLogs"`
 }
 
+// FullUrl gets the formatted connection URL
 func (config ServerConfiguration) FullUrl() string {
 	return fmt.Sprintf("%s:%d", config.Host, config.Port)
 }
 
+// GetData Get the users and events from a ServerConfiguration
 func (config ServerConfiguration) GetData() (users map[int]*types.User, events []*types.Event) {
 	users = make(map[int]*types.User)
 	for _, user := range config.Users {

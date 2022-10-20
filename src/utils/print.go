@@ -1,6 +1,8 @@
 // SDR - Labo 1
 // Nicolas Crausaz & Maxime Scharwath
 
+// The file contains various printing utilities used in the application
+
 package utils
 
 import (

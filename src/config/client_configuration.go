@@ -5,8 +5,7 @@ package config
 
 import "fmt"
 
-// ClientConfiguration contains the information needed for the client to connects
-// to a server
+// ClientConfiguration contains the information needed for the client to connects to a server
 type ClientConfiguration struct {
 	Host          string `json:"srvHost"`
 	Port          int    `json:"srvPort"`

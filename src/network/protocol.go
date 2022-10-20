@@ -61,7 +61,6 @@ type Request struct {
 	Data       string
 }
 
-// GetJson
 func (r Request) GetJson(data any) {
 	_ = json.Unmarshal([]byte(r.Data), data)
 }

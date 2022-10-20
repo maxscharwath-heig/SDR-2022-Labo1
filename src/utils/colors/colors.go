@@ -1,6 +1,8 @@
 // SDR - Labo 1
 // Nicolas Crausaz & Maxime Scharwath
 
+// Defines colors used to be displayed in the command prompt
+
 package colors
 
 var Reset = "\033[0m"

@@ -12,6 +12,7 @@ type Job struct {
 	Count    int    `json:"count"`
 }
 
+// ToRow get a table-printable row representation of a job
 func (job *Job) ToRow() string {
 	return fmt.Sprintf("%d\t%s\t%d", job.Id, job.Name, job.Capacity)
 }

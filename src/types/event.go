@@ -5,6 +5,7 @@ package types
 
 import "fmt"
 
+// Event contains all the data of an event
 type Event struct {
 	Id           int
 	Name         string
@@ -14,6 +15,7 @@ type Event struct {
 	Participants map[int]int
 }
 
+// Unregister removes a user from a job that was previously registered
 func (event *Event) Unregister(userId int) {
 	if jobId, ok := event.Participants[userId]; ok {
 		event.Jobs[jobId].Count--
@@ -21,6 +23,7 @@ func (event *Event) Unregister(userId int) {
 	delete(event.Participants, userId)
 }
 
+// Register adds an user to a job
 func (event *Event) Register(userId int, jobId int) error {
 	if job, ok := event.Jobs[jobId]; ok {
 		if job.Count < job.Capacity {

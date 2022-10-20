@@ -8,11 +8,13 @@ import (
 	"sdr/labo1/src/types"
 )
 
+// Participant represents a registration of a user in an event's job
 type Participant struct {
 	User  types.User `json:"user"`
 	JobId int        `json:"jobId"`
 }
 
+// Event contains all the data of an event
 type Event struct {
 	Id           int           `json:"id"`
 	Name         string        `json:"name"`
@@ -33,25 +35,30 @@ func (event *Event) ToRow() string {
 	return fmt.Sprintf("%d\t%s\t%s\t%s", event.Id, event.Name, event.Organizer.Username, openText)
 }
 
+// EventRegister defines required data for a register request
 type EventRegister struct {
 	EventId int `json:"eventId"`
 	JobId   int `json:"jobId"`
 }
 
+// EventClose defines required data for a close request
 type EventClose struct {
 	EventId int `json:"eventId"`
 }
 
+// Job defines required data for a job in a create request
 type Job struct {
 	Name     string `json:"name"`
 	Capacity int    `json:"capacity"`
 }
 
+// EventCreate defines required data for a create request
 type EventCreate struct {
 	Name string `json:"name"`
 	Jobs []Job  `json:"jobs"`
 }
 
+// EventShow defines required data for a show request
 type EventShow struct {
 	EventId int  `json:"eventId"`
 	Resume  bool `json:"resume"`

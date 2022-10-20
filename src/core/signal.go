@@ -9,6 +9,7 @@ import (
 	"syscall"
 )
 
+// OnSigTerm handle end of execution with a custom handler
 func OnSigTerm(handler func()) {
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)

@@ -18,6 +18,7 @@ import (
 	"time"
 )
 
+// ChanData Defines the channels used to access concurrency critical data
 type ChanData struct {
 	users  chan map[int]*types.User
 	events chan []*types.Event
@@ -44,13 +45,13 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 
 	utils.LogSuccess("Server started", serverConfiguration.FullUrl())
 
-	//init chan data structure
+	// init chan data structure
 	chanData := ChanData{
 		users:  make(chan map[int]*types.User, 1),
 		events: make(chan []*types.Event, 1),
 	}
 
-	{ // LOAD DATA FROM CONFIG
+	{ // Load configuration
 		users, events := serverConfiguration.GetData()
 		chanData.users <- users
 		chanData.events <- events
@@ -96,6 +97,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 	_ = l.Close()
 }
 
+// createEndpoint Registers a custom endpoint accessible on the server
 func createEndpoint(chanData *ChanData) network.Endpoint {
 	return network.Endpoint{
 		NeedsAuth: true,
@@ -145,6 +147,7 @@ func createEndpoint(chanData *ChanData) network.Endpoint {
 	}
 }
 
+// showEndpoint defines an endpoint that displays events
 func showEndpoint(chanData *ChanData) network.Endpoint {
 	return network.Endpoint{
 		NeedsAuth: false,
@@ -173,6 +176,7 @@ func showEndpoint(chanData *ChanData) network.Endpoint {
 	}
 }
 
+// closeEndpoint defines an endpoint that closes events
 func closeEndpoint(chanData *ChanData) network.Endpoint {
 	return network.Endpoint{
 		NeedsAuth: true,
@@ -205,6 +209,7 @@ func closeEndpoint(chanData *ChanData) network.Endpoint {
 	}
 }
 
+// registerEndpoint defines an endpoint that register user to events
 func registerEndpoint(chanData *ChanData) network.Endpoint {
 	return network.Endpoint{
 		NeedsAuth: true,
@@ -233,31 +238,33 @@ func registerEndpoint(chanData *ChanData) network.Endpoint {
 	}
 }
 
+// delayer delay execution by seconds
 func delayer(sec time.Duration) {
 	time.Sleep(time.Second * sec)
 }
 
+// createCriticalSection access a critical section (for debug)
 func createCriticalSection(chanName string, name string) (start func(), end func()) {
+	if !enableCriticDebug {
+		return func() {}, func() {}
+	}
+
+	// Generate an identifier the critical section
 	b := make([]byte, 4)
 	_, _ = rand.Read(b)
 	id := hex.EncodeToString(b)
 
 	start = func() {
-		if !enableCriticDebug {
-			return
-		}
 		utils.Log(true, fmt.Sprintf("CRITIC START [%s]", id), colors.BackgroundRed, fmt.Sprintf("🔒%s\t%s", chanName, name))
 		delayer(5)
 	}
 	end = func() {
-		if !enableCriticDebug {
-			return
-		}
 		utils.Log(true, fmt.Sprintf("CRITIC END   [%s]", id), colors.BackgroundRed, fmt.Sprintf("🔓%s\t%s", chanName, name))
 	}
 	return
 }
 
+// getUserById find and return and user in the user database
 func getUserById(id int, chanData *ChanData) types.User {
 	start, end := createCriticalSection("users", fmt.Sprintf("getUserById(%d)", id))
 	users := <-chanData.users
@@ -272,8 +279,7 @@ func getUserById(id int, chanData *ChanData) types.User {
 	return types.User{}
 }
 
-// CONVERSIONS
-
+// EventToDTO transforms an event to protocol's transmissible data
 func EventToDTO(event *types.Event, chanData *ChanData) dto.Event {
 	var jobs []types.Job
 	for _, job := range event.Jobs {
@@ -296,6 +302,7 @@ func EventToDTO(event *types.Event, chanData *ChanData) dto.Event {
 	}
 }
 
+// EventsToDTO transforms events to protocol's transmissible data
 func EventsToDTO(events []*types.Event, chanData *ChanData) []dto.Event {
 	var dtoEvents []dto.Event
 	for _, event := range events {
