@@ -35,15 +35,15 @@ func Stop() {
 func Start(serverConfiguration *config.ServerConfiguration) {
 	utils.SetEnabled(serverConfiguration.ShowInfosLogs)
 	enableCriticDebug = serverConfiguration.Debug
-	utils.LogInfo("debug mode", enableCriticDebug)
+	utils.LogInfo(true, "debug mode", enableCriticDebug)
 
 	l, err := net.Listen("tcp", serverConfiguration.FullUrl())
 	if err != nil {
-		utils.LogError("Error listening:", err.Error())
+		utils.LogError(true, "Error listening:", err.Error())
 		os.Exit(1)
 	}
 
-	utils.LogSuccess("Server started", serverConfiguration.FullUrl())
+	utils.LogSuccess(true, "Server started", serverConfiguration.FullUrl())
 
 	// init chan data structure
 	chanData := ChanData{
@@ -93,7 +93,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 		}
 	}()
 	<-stopServer
-	utils.LogInfo("Stopping server")
+	utils.LogInfo(true, "Stopping server")
 	_ = l.Close()
 }
 
