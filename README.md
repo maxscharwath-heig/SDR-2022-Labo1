@@ -100,13 +100,25 @@ Affiche l'état des postes d'une manifestation.
 
 ## Tests
 
+### Intégration
+
 Pour exécuter les tests, lancez la commande :
 > `go test ./tests/integration_test.go`
+
+### Concurrence
 
 Pour effectuer des tests manuels sur la concurrence et sur le protocole, modifiez la configuration du serveur pour ralentir
 les entrées en zones critiques :
 > `"debug": false`
 
+Il suffit ensuite de démarrer un serveur et plusieurs clients
+
+> go run server.go
+> go run client.go (selon le nombre de clients souhaités)
+
+En exécutant des commandes depuis les clients, on peut observer les entrées / sorties en sections critiques sur le serveur:
+
+![debug](./docs/debug.png)
 
 
 ## Limitations
