@@ -35,6 +35,7 @@ func expectError(t *testing.T, err error, expected string) {
 
 func TestSuccess(t *testing.T) {
 	validSrvConfig := config.ServerConfiguration{
+		Id:   0,
 		Host: "localhost",
 		Ports: []int{
 			10000,
@@ -59,7 +60,7 @@ func TestSuccess(t *testing.T) {
 
 	validClientConfig := config.ClientConfiguration{
 		Host: "localhost",
-		Port: 9001,
+		Port: 10000,
 	}
 
 	t.Run("should connect to server", func(t *testing.T) {
@@ -382,8 +383,13 @@ func TestSuccess(t *testing.T) {
 
 func TestErrors(t *testing.T) {
 	validSrvConfig := config.ServerConfiguration{
+		Id:   0,
 		Host: "localhost",
-		Port: 9001,
+		Ports: []int{
+			10000,
+			10001,
+			10002,
+		},
 		Users: []config.UserWithPassword{
 			{
 				1,

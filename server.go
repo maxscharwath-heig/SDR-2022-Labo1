@@ -11,7 +11,16 @@ import (
 
 func main() {
 	utils.PrintServerWelcome()
-	go server.Start(core.ReadConfig("server.json", &config.ServerConfiguration{}))
+
+	config := core.ReadConfig("server.json", &config.ServerConfiguration{})
+	flagId := flag.Int("id", 0, "# of the server")
+	flag.Parse()
+	config.Id = *flagId
+	if config.Id < 0 || config.Id >= len(config.Ports) {
+		panic("Invalid server number")
+	}
+
+	go server.Start(config)
 	core.OnSigTerm(func() {
 		fmt.Println("Stopping server...")
 		server.Stop()
