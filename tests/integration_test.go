@@ -59,13 +59,16 @@ func TestSuccess(t *testing.T) {
 	}
 
 	validClientConfig := config.ClientConfiguration{
-		Host: "localhost",
-		Port: 10000,
+		Servers: []string{
+			"localhost:10000",
+			"localhost:10001",
+			"localhost:10002",
+		},
 	}
 
 	t.Run("should connect to server", func(t *testing.T) {
 		go server.Start(&validSrvConfig)
-		conn, err := connect(validClientConfig.FullUrl())
+		conn, err := connect(validClientConfig.Servers[0])
 		t.Cleanup(func() {
 			_ = conn.Close()
 			server.Stop()
@@ -75,7 +78,7 @@ func TestSuccess(t *testing.T) {
 
 	t.Run("should create event", func(t *testing.T) {
 		go server.Start(&validSrvConfig)
-		conn, _ := connect(validClientConfig.FullUrl())
+		conn, _ := connect(validClientConfig.Servers[0])
 		cli := network.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
 				Username: "user1",
@@ -109,7 +112,7 @@ func TestSuccess(t *testing.T) {
 
 	t.Run("should close event", func(t *testing.T) {
 		go server.Start(&validSrvConfig)
-		conn, _ := connect(validClientConfig.FullUrl())
+		conn, _ := connect(validClientConfig.Servers[0])
 		cli := network.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
 				Username: "user1",
@@ -147,7 +150,7 @@ func TestSuccess(t *testing.T) {
 
 	t.Run("should register to event", func(t *testing.T) {
 		go server.Start(&validSrvConfig)
-		conn, _ := connect(validClientConfig.FullUrl())
+		conn, _ := connect(validClientConfig.Servers[0])
 		cli := network.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
 				Username: "user1",
@@ -188,7 +191,7 @@ func TestSuccess(t *testing.T) {
 
 	t.Run("should show all events", func(t *testing.T) {
 		go server.Start(&validSrvConfig)
-		conn, _ := connect(validClientConfig.FullUrl())
+		conn, _ := connect(validClientConfig.Servers[0])
 		cli := network.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
 				Username: "user1",
@@ -238,7 +241,7 @@ func TestSuccess(t *testing.T) {
 
 	t.Run("should show one event", func(t *testing.T) {
 		go server.Start(&validSrvConfig)
-		conn, _ := connect(validClientConfig.FullUrl())
+		conn, _ := connect(validClientConfig.Servers[0])
 		cli := network.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
 				Username: "user1",
@@ -278,7 +281,7 @@ func TestSuccess(t *testing.T) {
 
 	t.Run("should show one event resume", func(t *testing.T) {
 		go server.Start(&validSrvConfig)
-		conn, _ := connect(validClientConfig.FullUrl())
+		conn, _ := connect(validClientConfig.Servers[0])
 		cli := network.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
 				Username: "user1",
@@ -325,7 +328,7 @@ func TestSuccess(t *testing.T) {
 
 	t.Run("should not have duplicate registration", func(t *testing.T) {
 		go server.Start(&validSrvConfig)
-		conn, _ := connect(validClientConfig.FullUrl())
+		conn, _ := connect(validClientConfig.Servers[0])
 		cli := network.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
 				Username: "user1",
@@ -405,13 +408,16 @@ func TestErrors(t *testing.T) {
 	}
 
 	validClientConfig := config.ClientConfiguration{
-		Host: "localhost",
-		Port: 10000,
+		Servers: []string{
+			"localhost:10000",
+			"localhost:10001",
+			"localhost:10002",
+		},
 	}
 
 	t.Run("should give error if invalid credentials", func(t *testing.T) {
 		go server.Start(&validSrvConfig)
-		conn, _ := connect(validClientConfig.FullUrl())
+		conn, _ := connect(validClientConfig.Servers[0])
 
 		t.Cleanup(func() {
 			_ = conn.Close()
@@ -442,7 +448,7 @@ func TestErrors(t *testing.T) {
 
 	t.Run("should not register to a closed event", func(t *testing.T) {
 		go server.Start(&validSrvConfig)
-		conn, _ := connect(validClientConfig.FullUrl())
+		conn, _ := connect(validClientConfig.Servers[0])
 		cli := network.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
 				Username: "user1",
@@ -485,7 +491,7 @@ func TestErrors(t *testing.T) {
 
 	t.Run("should not close event if not organizer", func(t *testing.T) {
 		go server.Start(&validSrvConfig)
-		conn, _ := connect(validClientConfig.FullUrl())
+		conn, _ := connect(validClientConfig.Servers[0])
 
 		t.Cleanup(func() {
 			_ = conn.Close()
@@ -531,7 +537,7 @@ func TestErrors(t *testing.T) {
 
 	t.Run("should not close event if already closed", func(t *testing.T) {
 		go server.Start(&validSrvConfig)
-		conn, _ := connect(validClientConfig.FullUrl())
+		conn, _ := connect(validClientConfig.Servers[0])
 		cli := network.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
 				Username: "user1",
@@ -575,7 +581,7 @@ func TestErrors(t *testing.T) {
 
 	t.Run("should not show if event does not exist", func(t *testing.T) {
 		go server.Start(&validSrvConfig)
-		conn, _ := connect(validClientConfig.FullUrl())
+		conn, _ := connect(validClientConfig.Servers[0])
 
 		t.Cleanup(func() {
 			_ = conn.Close()
@@ -603,7 +609,7 @@ func TestErrors(t *testing.T) {
 
 	t.Run("should have error if empty event name", func(t *testing.T) {
 		go server.Start(&validSrvConfig)
-		conn, _ := connect(validClientConfig.FullUrl())
+		conn, _ := connect(validClientConfig.Servers[0])
 
 		t.Cleanup(func() {
 			_ = conn.Close()
@@ -636,7 +642,7 @@ func TestErrors(t *testing.T) {
 
 	t.Run("should have error if empty job name", func(t *testing.T) {
 		go server.Start(&validSrvConfig)
-		conn, _ := connect(validClientConfig.FullUrl())
+		conn, _ := connect(validClientConfig.Servers[0])
 
 		t.Cleanup(func() {
 			_ = conn.Close()
@@ -669,7 +675,7 @@ func TestErrors(t *testing.T) {
 
 	t.Run("should have error if empty job capacity", func(t *testing.T) {
 		go server.Start(&validSrvConfig)
-		conn, _ := connect(validClientConfig.FullUrl())
+		conn, _ := connect(validClientConfig.Servers[0])
 
 		t.Cleanup(func() {
 			_ = conn.Close()

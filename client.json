@@ -1,5 +1,8 @@
 {
-  "srvHost": "localhost",
-  "srvPort": 10000,
+  "servers": [
+    "localhost:10000",
+    "localhost:10001",
+    "localhost:10002"
+  ],
   "showInfosLogs": false
 }

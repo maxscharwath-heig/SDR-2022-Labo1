@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 	"os"
 	"sdr/labo1/src/config"
@@ -28,9 +29,9 @@ func authenticate() types.Credentials {
 func clientProcess(configuration config.ClientConfiguration) {
 	utils.PrintClientWelcome()
 
-	server := utils.StringPrompt("Enter the server address (default: " + configuration.FullUrl() + "):")
+	server := utils.StringPrompt("Enter the server address (default: random):")
 	if server == "" {
-		server = configuration.FullUrl()
+		server = configuration.Servers[rand.Intn(len(configuration.Servers))]
 	}
 
 	conn := connect("tcp", server)
@@ -164,7 +165,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 
 // connect makes client connects to server
 func connect(protocol string, address string) *net.TCPConn {
-	fmt.Print(colors.Yellow + "Connecting")
+	fmt.Print(colors.Yellow + fmt.Sprintf("Connecting to %s://%s", protocol, address) + colors.Reset)
 	// print dots while connecting
 	isConnecting := make(chan bool)
 	go func() {
