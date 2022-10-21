@@ -122,7 +122,7 @@ func (c connection) isClosed() bool {
 
 // Send raw data to the connection
 func (c connection) sendData(data string) error {
-	utils.LogInfo(fmt.Sprintf("📤SEND TO  %s", c.conn.RemoteAddr().String()), data)
+	utils.LogInfo(false, fmt.Sprintf("📤SEND TO  %s", c.conn.RemoteAddr().String()), data)
 	_, err := fmt.Fprintln(c.conn, data)
 	return err
 }
@@ -140,7 +140,7 @@ func (c connection) sendJSON(data any) error {
 func (c connection) getLine() (string, error) {
 	data, err := c.reader.ReadString('\n')
 	data = strings.TrimSpace(data)
-	utils.LogInfo(fmt.Sprintf("📥GOT FROM %s", c.conn.RemoteAddr().String()), data)
+	utils.LogInfo(false, fmt.Sprintf("📥GOT FROM %s", c.conn.RemoteAddr().String()), data)
 	return data, err
 }
 
@@ -172,9 +172,9 @@ type ServerProtocol struct {
 // Process
 // is the function that is called to process the connection. It is called in a go routine.
 func (p ServerProtocol) Process(c net.Conn) {
-	utils.LogInfo("new connection", c.RemoteAddr())
+	utils.LogInfo(false, "new connection", c.RemoteAddr())
 	defer func() {
-		utils.LogInfo("close connection", c.RemoteAddr())
+		utils.LogInfo(true, "close connection", c.RemoteAddr())
 		_ = c.Close()
 	}()
 
@@ -185,7 +185,7 @@ func (p ServerProtocol) Process(c net.Conn) {
 	var err error
 	for {
 		if conn.isClosed() || err == io.EOF {
-			utils.LogWarning("connection closed", c.RemoteAddr())
+			utils.LogInfo(false, "connection closed", c.RemoteAddr())
 			break
 		}
 		request := Request{
@@ -193,7 +193,7 @@ func (p ServerProtocol) Process(c net.Conn) {
 		}
 		request.EndpointId, err = conn.getLine()
 		if err != nil {
-			utils.LogWarning("error while receiving endpointId", err)
+			utils.LogInfo(false, "error while receiving endpointId", err)
 			continue
 		}
 
@@ -205,12 +205,12 @@ func (p ServerProtocol) Process(c net.Conn) {
 
 		err = conn.sendJSON(request.Header)
 		if err != nil {
-			utils.LogWarning("error while sending header", err)
+			utils.LogWarning(false, "error while sending header", err)
 			continue
 		}
 
 		if !request.Header.Valid {
-			utils.LogWarning("invalid endpoint, canceling request")
+			utils.LogWarning(false, "invalid endpoint, canceling request")
 			continue
 		}
 
@@ -219,7 +219,7 @@ func (p ServerProtocol) Process(c net.Conn) {
 
 			err = conn.getJson(&credentials)
 			if err != nil {
-				utils.LogWarning("error while receiving credentials", err)
+				utils.LogWarning(false, "error while receiving credentials", err)
 				continue
 			}
 
@@ -227,26 +227,26 @@ func (p ServerProtocol) Process(c net.Conn) {
 
 			err = conn.sendJSON(AuthResponse{isValid, auth})
 			if err != nil {
-				utils.LogWarning("error while sending auth response", err)
+				utils.LogWarning(false, "error while sending auth response", err)
 				continue
 			}
 
 			request.AuthId = auth
 			if !isValid {
-				utils.LogWarning("invalid credentials, canceling request")
+				utils.LogWarning(false, "invalid credentials, canceling request")
 				continue
 			}
 		}
 		request.Data, err = conn.getLine()
 		if err != nil {
-			utils.LogWarning("error while receiving data", err)
+			utils.LogWarning(false, "error while receiving data", err)
 			continue
 		}
 
 		response := endpoint.HandlerFunc(request)
 		err = conn.sendJSON(response)
 		if err != nil {
-			utils.LogWarning("error while sending response", err)
+			utils.LogWarning(false, "error while sending response", err)
 			continue
 		}
 	}
