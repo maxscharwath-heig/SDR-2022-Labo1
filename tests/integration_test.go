@@ -36,7 +36,11 @@ func expectError(t *testing.T, err error, expected string) {
 func TestSuccess(t *testing.T) {
 	validSrvConfig := config.ServerConfiguration{
 		Host: "localhost",
-		Port: 9001,
+		Ports: []int{
+			10000,
+			10001,
+			10002,
+		},
 		Users: []config.UserWithPassword{
 			{
 				1,
@@ -396,7 +400,7 @@ func TestErrors(t *testing.T) {
 
 	validClientConfig := config.ClientConfiguration{
 		Host: "localhost",
-		Port: 9001,
+		Port: 10000,
 	}
 
 	t.Run("should give error if invalid credentials", func(t *testing.T) {

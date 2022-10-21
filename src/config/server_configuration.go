@@ -1,4 +1,4 @@
-// SDR - Labo 1
+// SDR - Labo 2
 // Nicolas Crausaz & Maxime Scharwath
 
 package config
@@ -18,17 +18,22 @@ type UserWithPassword struct {
 
 // ServerConfiguration contains the information
 type ServerConfiguration struct {
+	Id            int                `json:"-"`
 	Host          string             `json:"host"`
-	Port          int                `json:"port"`
+	Ports         []int              `json:"ports"`
 	Users         []UserWithPassword `json:"users"`
 	Events        []dto.Event        `json:"events"`
 	Debug         bool               `json:"debug"`
 	ShowInfosLogs bool               `json:"showInfosLogs"`
 }
 
+func (config ServerConfiguration) CurrentPort() int {
+	return config.Ports[config.Id]
+}
+
 // FullUrl gets the formatted connection URL
 func (config ServerConfiguration) FullUrl() string {
-	return fmt.Sprintf("%s:%d", config.Host, config.Port)
+	return fmt.Sprintf("%s:%d", config.Host, config.CurrentPort())
 }
 
 // GetData Get the users and events from a ServerConfiguration

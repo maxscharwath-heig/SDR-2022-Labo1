@@ -1,8 +1,12 @@
 {
   "host": "localhost",
-  "port": 9000,
+  "ports": [
+    10000,
+    10001,
+    10002
+  ],
   "debug": false,
-  "showInfosLogs": false,
+  "showInfosLogs": true,
   "users": [
     {
       "id": 1,
