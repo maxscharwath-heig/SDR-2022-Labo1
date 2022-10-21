@@ -27,7 +27,13 @@ func authenticate() types.Credentials {
 // clientProcess is the main function of the client
 func clientProcess(configuration config.ClientConfiguration) {
 	utils.PrintClientWelcome()
-	conn := connect("tcp", configuration.FullUrl())
+
+	server := utils.StringPrompt("Enter the server address (default: " + configuration.FullUrl() + "):")
+	if server == "" {
+		server = configuration.FullUrl()
+	}
+
+	conn := connect("tcp", server)
 	protocol := network.CreateClientProtocol(conn, authenticate)
 	core.OnSigTerm(func() {
 		disconnect(conn)

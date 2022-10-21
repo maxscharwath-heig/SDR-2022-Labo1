@@ -1,5 +1,5 @@
 {
   "srvHost": "localhost",
-  "srvPort": 9000,
+  "srvPort": 10000,
   "showInfosLogs": false
 }
