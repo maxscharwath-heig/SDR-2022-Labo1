@@ -1,9 +1,10 @@
 {
-  "host": "localhost",
-  "ports": [
-    10000,
-    10001,
-    10002
+  "servers": [
+    "localhost:10000",
+    "localhost:10001",
+    "localhost:10002",
+    "localhost:10003",
+    "localhost:10004"
   ],
   "debug": false,
   "showInfosLogs": true,

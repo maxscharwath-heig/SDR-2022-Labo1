@@ -4,7 +4,6 @@
 package config
 
 import (
-	"fmt"
 	"sdr/labo1/src/dto"
 	"sdr/labo1/src/types"
 )
@@ -19,21 +18,20 @@ type UserWithPassword struct {
 // ServerConfiguration contains the information
 type ServerConfiguration struct {
 	Id            int                `json:"-"`
-	Host          string             `json:"host"`
-	Ports         []int              `json:"ports"`
+	Servers       []string           `json:"servers"`
 	Users         []UserWithPassword `json:"users"`
 	Events        []dto.Event        `json:"events"`
 	Debug         bool               `json:"debug"`
 	ShowInfosLogs bool               `json:"showInfosLogs"`
 }
 
-func (config ServerConfiguration) CurrentPort() int {
-	return config.Ports[config.Id]
-}
-
 // FullUrl gets the formatted connection URL
 func (config ServerConfiguration) FullUrl() string {
-	return fmt.Sprintf("%s:%d", config.Host, config.CurrentPort())
+	return config.Servers[config.Id]
+}
+
+func (config ServerConfiguration) GetOtherServers() []string {
+	return append(config.Servers[0:config.Id], config.Servers[config.Id+1:]...)
 }
 
 // GetData Get the users and events from a ServerConfiguration

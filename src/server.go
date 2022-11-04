@@ -83,6 +83,15 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 			"register": registerEndpoint(&chanData),
 		},
 	}
+
+	interServerProtocol := network.CreateInterServerProtocol()
+
+	if interServerProtocol.ConnectToServers(serverConfiguration.GetOtherServers()) {
+		utils.LogSuccess(true, "Connected to other servers")
+	} else {
+		utils.LogError(true, "Failed to connect to other servers")
+	}
+
 	go func() {
 		for {
 			conn, err := l.Accept()

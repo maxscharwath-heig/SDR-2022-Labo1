@@ -16,7 +16,7 @@ func main() {
 	flagId := flag.Int("id", 0, "# of the server")
 	flag.Parse()
 	config.Id = *flagId
-	if config.Id < 0 || config.Id >= len(config.Ports) {
+	if config.Id < 0 || config.Id >= len(config.Servers) {
 		panic("Invalid server number")
 	}
 
