@@ -57,6 +57,14 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 		chanData.events <- events
 	}
 
+	interServerProtocol := network.CreateInterServerProtocol()
+
+	if interServerProtocol.ConnectToServers(serverConfiguration.GetOtherServers()) {
+		utils.LogSuccess(true, "Connected to other servers")
+	} else {
+		utils.LogError(true, "Failed to connect to other servers")
+	}
+
 	protocol := network.ServerProtocol{
 		AuthFunc: func(credential types.Credentials) (bool, network.AuthId) {
 			start, end := createCriticalSection("users", "AuthFunc")
@@ -82,14 +90,6 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 			"close":    closeEndpoint(&chanData),
 			"register": registerEndpoint(&chanData),
 		},
-	}
-
-	interServerProtocol := network.CreateInterServerProtocol()
-
-	if interServerProtocol.ConnectToServers(serverConfiguration.GetOtherServers()) {
-		utils.LogSuccess(true, "Connected to other servers")
-	} else {
-		utils.LogError(true, "Failed to connect to other servers")
 	}
 
 	go func() {
