@@ -26,12 +26,16 @@ func (event *Event) Unregister(userId int) {
 // Register adds an user to a job
 func (event *Event) Register(userId int, jobId int) error {
 	if job, ok := event.Jobs[jobId]; ok {
+		if !event.Open {
+			return fmt.Errorf("event is closed")
+		}
 		if job.Count < job.Capacity {
 			event.Unregister(userId)
 			event.Participants[userId] = jobId
 			job.Count++
 			return nil
 		}
+		return fmt.Errorf("job %d is full", jobId)
 	}
 	return fmt.Errorf("job not found")
 }
