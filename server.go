@@ -21,10 +21,10 @@ func main() {
 	}
 
 	go server.Start(config)
-	core.OnSigTerm(func() {
+	/*core.OnSigTerm(func() {
 		fmt.Println("Stopping server...")
 		server.Stop()
-	})
+	})*/
 	var input string
 	for {
 		fmt.Scanln(&input)

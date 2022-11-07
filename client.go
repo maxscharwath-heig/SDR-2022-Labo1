@@ -9,6 +9,7 @@ import (
 	"sdr/labo1/src/core"
 	"sdr/labo1/src/dto"
 	"sdr/labo1/src/network"
+	"sdr/labo1/src/network/client_server"
 	"sdr/labo1/src/types"
 	"sdr/labo1/src/utils"
 	"sdr/labo1/src/utils/colors"
@@ -34,10 +35,9 @@ func clientProcess(configuration config.ClientConfiguration) {
 		server = configuration.Servers[rand.Intn(len(configuration.Servers))]
 	}
 
-	conn := connect("tcp", server)
-	protocol := network.CreateClientProtocol(conn, authenticate)
+	protocol := connect("tcp", server)
 	core.OnSigTerm(func() {
-		disconnect(conn)
+		disconnect(protocol)
 	})
 	protocol.OnClose(func() {
 		fmt.Println()
@@ -52,7 +52,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 		case "h":
 			utils.PrintHelp()
 		case "create":
-			json, err := protocol.SendRequest("create", func(auth network.AuthId) any {
+			json, err := protocol.SendRequest("create", func(auth client_server.AuthId) any {
 				event := dto.EventCreate{
 					Name: utils.StringPrompt("Enter event name:"),
 				}
@@ -86,7 +86,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 				}
 			}
 		case "close":
-			json, err := protocol.SendRequest("close", func(auth network.AuthId) any {
+			json, err := protocol.SendRequest("close", func(auth client_server.AuthId) any {
 				return dto.EventClose{
 					EventId: utils.IntPrompt("Enter event id:"),
 				}
@@ -102,7 +102,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 				}
 			}
 		case "register":
-			json, err := protocol.SendRequest("register", func(auth network.AuthId) any {
+			json, err := protocol.SendRequest("register", func(auth client_server.AuthId) any {
 				return dto.EventRegister{
 					EventId: utils.IntPrompt("Enter event id:"),
 					JobId:   utils.IntPrompt("Enter job id:"),
@@ -123,7 +123,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 			if len(args) > 0 {
 				eventId, _ = strconv.Atoi(args[0])
 			}
-			json, err := protocol.SendRequest("show", func(auth network.AuthId) any {
+			json, err := protocol.SendRequest("show", func(auth client_server.AuthId) any {
 				return dto.EventShow{
 					EventId: eventId,
 					Resume:  flags["resume"],
@@ -155,7 +155,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 				}
 			}
 		case "quit":
-			disconnect(conn)
+			disconnect(protocol)
 			return
 		default:
 			utils.PrintError(fmt.Sprintf("Unknown command \"%s\"", cmd))
@@ -164,7 +164,7 @@ func clientProcess(configuration config.ClientConfiguration) {
 }
 
 // connect makes client connects to server
-func connect(protocol string, address string) *net.TCPConn {
+func connect(protocol string, address string) *client_server.ClientProtocol {
 	fmt.Print(colors.Yellow + fmt.Sprintf("Connecting to %s://%s", protocol, address) + colors.Reset)
 	// print dots while connecting
 	isConnecting := make(chan bool)
@@ -172,6 +172,7 @@ func connect(protocol string, address string) *net.TCPConn {
 		for {
 			select {
 			case <-isConnecting:
+				fmt.Print(colors.Reset)
 				return
 			default:
 				fmt.Print(".")
@@ -181,18 +182,21 @@ func connect(protocol string, address string) *net.TCPConn {
 	}()
 	tcpAddr, _ := net.ResolveTCPAddr(protocol, address)
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)
-	isConnecting <- true
-	fmt.Print(colors.Reset)
 	if err != nil {
+		isConnecting <- true
 		utils.PrintError("Connection failed")
 		os.Exit(1)
+		return nil
 	}
+	p := client_server.CreateClientProtocol(conn, authenticate)
+	p.Handshake()
+	isConnecting <- true
 	utils.PrintSuccess("Connection established")
-	return conn
+	return p
 }
 
 // disconnect quit the client's connection
-func disconnect(conn net.Conn) {
+func disconnect(conn *client_server.ClientProtocol) {
 	fmt.Print(colors.Yellow+"Disconnecting", colors.Reset)
 	conn.Close()
 }

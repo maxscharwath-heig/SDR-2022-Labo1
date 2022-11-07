@@ -12,6 +12,8 @@ import (
 	"sdr/labo1/src/config"
 	"sdr/labo1/src/dto"
 	"sdr/labo1/src/network"
+	"sdr/labo1/src/network/client_server"
+	"sdr/labo1/src/network/server_server"
 	"sdr/labo1/src/types"
 	"sdr/labo1/src/utils"
 	"sdr/labo1/src/utils/colors"
@@ -57,16 +59,12 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 		chanData.events <- events
 	}
 
-	interServerProtocol := network.CreateInterServerProtocol()
+	interServerProtocol := server_server.CreateInterServerProtocol(l)
 
-	if interServerProtocol.ConnectToServers(serverConfiguration.GetOtherServers()) {
-		utils.LogSuccess(true, "Connected to other servers")
-	} else {
-		utils.LogError(true, "Failed to connect to other servers")
-	}
+	interServerProtocol.ConnectToServers(serverConfiguration.GetOtherServers())
 
-	protocol := network.ServerProtocol{
-		AuthFunc: func(credential types.Credentials) (bool, network.AuthId) {
+	protocol := client_server.ServerProtocol{
+		AuthFunc: func(credential types.Credentials) (bool, client_server.AuthId) {
 			start, end := createCriticalSection("users", "AuthFunc")
 			users := <-chanData.users
 			start()
@@ -84,7 +82,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 			}
 			return false, -1
 		},
-		Endpoints: map[string]network.Endpoint{
+		Endpoints: map[string]client_server.ServerEndpoint{
 			"create":   createEndpoint(&chanData),
 			"show":     showEndpoint(&chanData),
 			"close":    closeEndpoint(&chanData),
@@ -106,11 +104,13 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 	_ = l.Close()
 }
 
+type request = network.Request[client_server.HeaderResponse]
+
 // createEndpoint Registers a custom endpoint accessible on the server
-func createEndpoint(chanData *ChanData) network.Endpoint {
-	return network.Endpoint{
+func createEndpoint(chanData *ChanData) client_server.ServerEndpoint {
+	return client_server.ServerEndpoint{
 		NeedsAuth: true,
-		HandlerFunc: func(request network.Request) network.Response[any] {
+		HandlerFunc: func(request request) network.Response[any] {
 			data := dto.EventCreate{}
 			request.GetJson(&data)
 
@@ -121,7 +121,7 @@ func createEndpoint(chanData *ChanData) network.Endpoint {
 			event := &types.Event{
 				Name:         data.Name,
 				Open:         true,
-				OrganizerId:  request.AuthId,
+				OrganizerId:  request.Header.AuthId,
 				Jobs:         make(map[int]*types.Job),
 				Participants: make(map[int]int),
 			}
@@ -157,10 +157,10 @@ func createEndpoint(chanData *ChanData) network.Endpoint {
 }
 
 // showEndpoint defines an endpoint that displays events
-func showEndpoint(chanData *ChanData) network.Endpoint {
-	return network.Endpoint{
+func showEndpoint(chanData *ChanData) client_server.ServerEndpoint {
+	return client_server.ServerEndpoint{
 		NeedsAuth: false,
-		HandlerFunc: func(request network.Request) network.Response[any] {
+		HandlerFunc: func(request request) network.Response[any] {
 			data := dto.EventShow{}
 			request.GetJson(&data)
 
@@ -186,10 +186,10 @@ func showEndpoint(chanData *ChanData) network.Endpoint {
 }
 
 // closeEndpoint defines an endpoint that closes events
-func closeEndpoint(chanData *ChanData) network.Endpoint {
-	return network.Endpoint{
+func closeEndpoint(chanData *ChanData) client_server.ServerEndpoint {
+	return client_server.ServerEndpoint{
 		NeedsAuth: true,
-		HandlerFunc: func(request network.Request) network.Response[any] {
+		HandlerFunc: func(request request) network.Response[any] {
 			data := dto.EventClose{}
 			request.GetJson(&data)
 
@@ -203,7 +203,7 @@ func closeEndpoint(chanData *ChanData) network.Endpoint {
 
 			for i, ev := range events {
 				if ev.Id == data.EventId {
-					if ev.OrganizerId != request.AuthId {
+					if ev.OrganizerId != request.Header.AuthId {
 						return network.CreateResponse(false, "you are not the organizer")
 					}
 					if !ev.Open {
@@ -219,10 +219,10 @@ func closeEndpoint(chanData *ChanData) network.Endpoint {
 }
 
 // registerEndpoint defines an endpoint that register user to events
-func registerEndpoint(chanData *ChanData) network.Endpoint {
-	return network.Endpoint{
+func registerEndpoint(chanData *ChanData) client_server.ServerEndpoint {
+	return client_server.ServerEndpoint{
 		NeedsAuth: true,
-		HandlerFunc: func(request network.Request) network.Response[any] {
+		HandlerFunc: func(request request) network.Response[any] {
 			data := dto.EventRegister{}
 			request.GetJson(&data)
 
@@ -236,7 +236,7 @@ func registerEndpoint(chanData *ChanData) network.Endpoint {
 
 			for _, ev := range events {
 				if ev.Id == data.EventId {
-					if err := ev.Register(request.AuthId, data.JobId); err != nil {
+					if err := ev.Register(request.Header.AuthId, data.JobId); err != nil {
 						return network.CreateResponse(false, err.Error())
 					}
 					return network.CreateResponse(true, EventToDTO(ev, chanData))
