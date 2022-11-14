@@ -108,6 +108,11 @@ func ParseResponse[T any](data string) (res T, err error) {
 	return result.Data, nil
 }
 
+func GetJson[T any](conn Connection) (data T, err error) {
+	err = conn.GetJson(&data)
+	return
+}
+
 func GetResponse[T any](conn Connection, endpointId string) (res T, err error) {
 	if endpoint, e := conn.GetLine(); e != nil || endpoint != endpointId {
 		return res, fmt.Errorf("invalid endpoint")

@@ -45,9 +45,10 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 		os.Exit(1)
 	}
 
-	interServerProtocol := server_server.CreateInterServerProtocol(listenerServer)
+	interServerProtocol := server_server.CreateInterServerProtocol(serverConfiguration.Id, listenerServer)
 
 	interServerProtocol.ConnectToServers(serverConfiguration.GetOtherServers())
+	go interServerProtocol.listenMessages()
 
 	// [AT THIS POINT, THE SERVER IS CONNECTED TO ALL OTHER SERVERS]
 
