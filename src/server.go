@@ -13,6 +13,7 @@ import (
 	"sdr/labo1/src/dto"
 	"sdr/labo1/src/network"
 	"sdr/labo1/src/network/client_server"
+	"sdr/labo1/src/network/server_server"
 	"sdr/labo1/src/types"
 	"sdr/labo1/src/utils"
 	"sdr/labo1/src/utils/colors"
@@ -38,13 +39,17 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 	enableCriticDebug = serverConfiguration.Debug
 	utils.LogInfo(true, "debug mode", enableCriticDebug)
 
-	l, err := net.Listen("tcp", serverConfiguration.GetCurrentUrls().Client)
+	listenerServer, err := net.Listen("tcp", serverConfiguration.GetCurrentUrls().Server)
 	if err != nil {
 		utils.LogError(true, "Error listening:", err.Error())
 		os.Exit(1)
 	}
 
-	utils.LogSuccess(true, "Server started", serverConfiguration.GetCurrentUrls().Client)
+	interServerProtocol := server_server.CreateInterServerProtocol(listenerServer)
+
+	interServerProtocol.ConnectToServers(serverConfiguration.GetOtherServers())
+
+	// [AT THIS POINT, THE SERVER IS CONNECTED TO ALL OTHER SERVERS]
 
 	// init chan data structure
 	chanData := ChanData{
@@ -58,9 +63,13 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 		chanData.events <- events
 	}
 
-	//interServerProtocol := server_server.CreateInterServerProtocol(l)
+	listenerClient, err := net.Listen("tcp", serverConfiguration.GetCurrentUrls().Client)
+	if err != nil {
+		utils.LogError(true, "Error listening:", err.Error())
+		os.Exit(1)
+	}
 
-	//interServerProtocol.ConnectToServers(serverConfiguration.GetOtherServers())
+	utils.LogSuccess(true, "Server started", serverConfiguration.GetCurrentUrls().Client)
 
 	protocol := client_server.ServerProtocol{
 		AuthFunc: func(credential types.Credentials) (bool, client_server.AuthId) {
@@ -91,7 +100,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 
 	go func() {
 		for {
-			conn, err := l.Accept()
+			conn, err := listenerClient.Accept()
 			if err != nil {
 				return
 			}
@@ -100,7 +109,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 	}()
 	<-stopServer
 	utils.LogInfo(true, "Stopping server")
-	_ = l.Close()
+	_ = listenerClient.Close()
 }
 
 type request = network.Request[client_server.HeaderResponse]

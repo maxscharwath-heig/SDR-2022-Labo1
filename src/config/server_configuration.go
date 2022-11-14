@@ -37,8 +37,8 @@ func (config ServerConfiguration) GetCurrentUrls() ServerUrl {
 
 func (config ServerConfiguration) GetOtherServers() []string {
 	var urls []string
-	for _, server := range config.Servers {
-		if server.Client != config.GetCurrentUrls().Server {
+	for id, server := range config.Servers {
+		if id != config.Id {
 			urls = append(urls, server.Server)
 		}
 	}

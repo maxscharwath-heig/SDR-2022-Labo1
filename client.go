@@ -189,7 +189,6 @@ func connect(protocol string, address string) *client_server.ClientProtocol {
 		return nil
 	}
 	p := client_server.CreateClientProtocol(conn, authenticate)
-	p.Handshake()
 	isConnecting <- true
 	utils.PrintSuccess("Connection established")
 	return p
