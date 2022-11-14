@@ -23,23 +23,6 @@ func CreateConnection(conn net.Conn) *Connection {
 	}
 }
 
-func (c Connection) SendHandshake(id string) bool {
-	if err := c.SendData(id); err != nil {
-		return false
-	}
-	if data, err := c.GetLine(); err != nil || data != id {
-		return false
-	}
-	return true
-}
-
-func (c Connection) GetHandshake(id string) bool {
-	if data, err := c.GetLine(); err != nil || data != id {
-		return false
-	}
-	return c.SendHandshake(id)
-}
-
 func (c Connection) IsClosed() bool {
 	_, err := c.Read(make([]byte, 0))
 	return err != nil

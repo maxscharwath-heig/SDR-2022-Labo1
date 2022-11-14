@@ -15,23 +15,34 @@ type UserWithPassword struct {
 	Password string `json:"password"`
 }
 
+type ServerUrl struct {
+	Client string `json:"client"`
+	Server string `json:"server"`
+}
+
 // ServerConfiguration contains the information
 type ServerConfiguration struct {
 	Id            int                `json:"-"`
-	Servers       []string           `json:"servers"`
+	Servers       []ServerUrl        `json:"servers"`
 	Users         []UserWithPassword `json:"users"`
 	Events        []dto.Event        `json:"events"`
 	Debug         bool               `json:"debug"`
 	ShowInfosLogs bool               `json:"showInfosLogs"`
 }
 
-// FullUrl gets the formatted connection URL
-func (config ServerConfiguration) FullUrl() string {
+// GetCurrentUrls gets the current server urls
+func (config ServerConfiguration) GetCurrentUrls() ServerUrl {
 	return config.Servers[config.Id]
 }
 
 func (config ServerConfiguration) GetOtherServers() []string {
-	return append(config.Servers[0:config.Id], config.Servers[config.Id+1:]...)
+	var urls []string
+	for _, server := range config.Servers {
+		if server.Client != config.GetCurrentUrls().Server {
+			urls = append(urls, server.Server)
+		}
+	}
+	return urls
 }
 
 // GetData Get the users and events from a ServerConfiguration

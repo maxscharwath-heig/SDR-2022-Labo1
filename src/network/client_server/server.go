@@ -44,7 +44,6 @@ func (p ServerProtocol) Process(c net.Conn) {
 	}()
 
 	conn := network.CreateConnection(c)
-	conn.GetHandshake("client_server")
 	var err error
 	for {
 		if conn.IsClosed() || err == io.EOF {

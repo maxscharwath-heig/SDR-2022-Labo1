@@ -13,7 +13,6 @@ import (
 	"sdr/labo1/src/dto"
 	"sdr/labo1/src/network"
 	"sdr/labo1/src/network/client_server"
-	"sdr/labo1/src/network/server_server"
 	"sdr/labo1/src/types"
 	"sdr/labo1/src/utils"
 	"sdr/labo1/src/utils/colors"
@@ -39,13 +38,13 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 	enableCriticDebug = serverConfiguration.Debug
 	utils.LogInfo(true, "debug mode", enableCriticDebug)
 
-	l, err := net.Listen("tcp", serverConfiguration.FullUrl())
+	l, err := net.Listen("tcp", serverConfiguration.GetCurrentUrls().Client)
 	if err != nil {
 		utils.LogError(true, "Error listening:", err.Error())
 		os.Exit(1)
 	}
 
-	utils.LogSuccess(true, "Server started", serverConfiguration.FullUrl())
+	utils.LogSuccess(true, "Server started", serverConfiguration.GetCurrentUrls().Client)
 
 	// init chan data structure
 	chanData := ChanData{
@@ -59,9 +58,9 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 		chanData.events <- events
 	}
 
-	interServerProtocol := server_server.CreateInterServerProtocol(l)
+	//interServerProtocol := server_server.CreateInterServerProtocol(l)
 
-	interServerProtocol.ConnectToServers(serverConfiguration.GetOtherServers())
+	//interServerProtocol.ConnectToServers(serverConfiguration.GetOtherServers())
 
 	protocol := client_server.ServerProtocol{
 		AuthFunc: func(credential types.Credentials) (bool, client_server.AuthId) {

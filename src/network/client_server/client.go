@@ -94,7 +94,3 @@ func (p ClientProtocol) OnClose(handler func()) {
 		}
 	}()
 }
-
-func (p ClientProtocol) Handshake() bool {
-	return p.conn.SendHandshake("client_server")
-}
