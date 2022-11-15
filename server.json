@@ -1,13 +1,24 @@
 {
   "servers": [
-    "localhost:10000",
-    "localhost:10001",
-    "localhost:10002",
-    "localhost:10003",
-    "localhost:10004"
+    {
+      "client" : "localhost:10000",
+      "server" : "localhost:11000"
+    },
+    {
+      "client" : "localhost:10001",
+      "server" : "localhost:11001"
+    },
+    {
+      "client" : "localhost:10002",
+      "server" : "localhost:11002"
+    },
+    {
+      "client" : "localhost:10003",
+      "server" : "localhost:11003"
+    }
   ],
   "debug": false,
-  "showInfosLogs": true,
+  "showInfosLogs": false,
   "users": [
     {
       "id": 1,

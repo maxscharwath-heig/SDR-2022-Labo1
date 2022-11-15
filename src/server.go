@@ -12,6 +12,8 @@ import (
 	"sdr/labo1/src/config"
 	"sdr/labo1/src/dto"
 	"sdr/labo1/src/network"
+	"sdr/labo1/src/network/client_server"
+	"sdr/labo1/src/network/server_server"
 	"sdr/labo1/src/types"
 	"sdr/labo1/src/utils"
 	"sdr/labo1/src/utils/colors"
@@ -37,13 +39,18 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 	enableCriticDebug = serverConfiguration.Debug
 	utils.LogInfo(true, "debug mode", enableCriticDebug)
 
-	l, err := net.Listen("tcp", serverConfiguration.FullUrl())
+	listenerServer, err := net.Listen("tcp", serverConfiguration.GetCurrentUrls().Server)
 	if err != nil {
 		utils.LogError(true, "Error listening:", err.Error())
 		os.Exit(1)
 	}
 
-	utils.LogSuccess(true, "Server started", serverConfiguration.FullUrl())
+	interServerProtocol := server_server.CreateInterServerProtocol(serverConfiguration.Id, listenerServer)
+
+	interServerProtocol.ConnectToServers(serverConfiguration.GetOtherServers())
+	go interServerProtocol.GetMessage()
+
+	// [AT THIS POINT, THE SERVER IS CONNECTED TO ALL OTHER SERVERS]
 
 	// init chan data structure
 	chanData := ChanData{
@@ -57,16 +64,16 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 		chanData.events <- events
 	}
 
-	interServerProtocol := network.CreateInterServerProtocol()
-
-	if interServerProtocol.ConnectToServers(serverConfiguration.GetOtherServers()) {
-		utils.LogSuccess(true, "Connected to other servers")
-	} else {
-		utils.LogError(true, "Failed to connect to other servers")
+	listenerClient, err := net.Listen("tcp", serverConfiguration.GetCurrentUrls().Client)
+	if err != nil {
+		utils.LogError(true, "Error listening:", err.Error())
+		os.Exit(1)
 	}
 
-	protocol := network.ServerProtocol{
-		AuthFunc: func(credential types.Credentials) (success bool, userId network.AuthId) {
+	utils.LogSuccess(true, "Server started", serverConfiguration.GetCurrentUrls().Client)
+
+	protocol := client_server.ServerProtocol{
+		AuthFunc: func(credential types.Credentials) (success bool, userId client_server.AuthId) {
 			start, end := createCriticalSection("users", "AuthFunc")
 
 			for {
@@ -90,7 +97,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 				}
 			}
 		},
-		Endpoints: map[string]network.Endpoint{
+		Endpoints: map[string]client_server.ServerEndpoint{
 			"create":   createEndpoint(&chanData),
 			"show":     showEndpoint(&chanData),
 			"close":    closeEndpoint(&chanData),
@@ -100,7 +107,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 
 	go func() {
 		for {
-			conn, err := l.Accept()
+			conn, err := listenerClient.Accept()
 			if err != nil {
 				return
 			}
@@ -109,14 +116,16 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 	}()
 	<-stopServer
 	utils.LogInfo(true, "Stopping server")
-	_ = l.Close()
+	_ = listenerClient.Close()
 }
 
+type request = network.Request[client_server.HeaderResponse]
+
 // createEndpoint Registers a custom endpoint accessible on the server
-func createEndpoint(chanData *ChanData) network.Endpoint {
-	return network.Endpoint{
+func createEndpoint(chanData *ChanData) client_server.ServerEndpoint {
+	return client_server.ServerEndpoint{
 		NeedsAuth: true,
-		HandlerFunc: func(request network.Request) network.Response[any] {
+		HandlerFunc: func(request request) network.Response[any] {
 			data := dto.EventCreate{}
 			request.GetJson(&data)
 
@@ -127,7 +136,7 @@ func createEndpoint(chanData *ChanData) network.Endpoint {
 			event := &types.Event{
 				Name:         data.Name,
 				Open:         true,
-				OrganizerId:  request.AuthId,
+				OrganizerId:  request.Header.AuthId,
 				Jobs:         make(map[int]*types.Job),
 				Participants: make(map[int]int),
 			}
@@ -163,10 +172,10 @@ func createEndpoint(chanData *ChanData) network.Endpoint {
 }
 
 // showEndpoint defines an endpoint that displays events
-func showEndpoint(chanData *ChanData) network.Endpoint {
-	return network.Endpoint{
+func showEndpoint(chanData *ChanData) client_server.ServerEndpoint {
+	return client_server.ServerEndpoint{
 		NeedsAuth: false,
-		HandlerFunc: func(request network.Request) (res network.Response[any]) {
+		HandlerFunc: func(request request) (res network.Response[any]) {
 			data := dto.EventShow{}
 			request.GetJson(&data)
 
@@ -200,10 +209,10 @@ func showEndpoint(chanData *ChanData) network.Endpoint {
 }
 
 // closeEndpoint defines an endpoint that closes events
-func closeEndpoint(chanData *ChanData) network.Endpoint {
-	return network.Endpoint{
+func closeEndpoint(chanData *ChanData) client_server.ServerEndpoint {
+	return client_server.ServerEndpoint{
 		NeedsAuth: true,
-		HandlerFunc: func(request network.Request) (res network.Response[any]) {
+		HandlerFunc: func(request request) (res network.Response[any]) {
 			data := dto.EventClose{}
 			request.GetJson(&data)
 
@@ -215,7 +224,7 @@ func closeEndpoint(chanData *ChanData) network.Endpoint {
 					start()
 					for i, ev := range events {
 						if ev.Id == data.EventId {
-							if ev.OrganizerId != request.AuthId {
+							if ev.OrganizerId != request.Header.AuthId {
 								res = network.CreateResponse(false, "you are not the organizer")
 								break
 							}
@@ -241,10 +250,10 @@ func closeEndpoint(chanData *ChanData) network.Endpoint {
 }
 
 // registerEndpoint defines an endpoint that register user to events
-func registerEndpoint(chanData *ChanData) network.Endpoint {
-	return network.Endpoint{
+func registerEndpoint(chanData *ChanData) client_server.ServerEndpoint {
+	return client_server.ServerEndpoint{
 		NeedsAuth: true,
-		HandlerFunc: func(request network.Request) (res network.Response[any]) {
+		HandlerFunc: func(request request) (res network.Response[any]) {
 			data := dto.EventRegister{}
 			request.GetJson(&data)
 
@@ -256,7 +265,7 @@ func registerEndpoint(chanData *ChanData) network.Endpoint {
 					start()
 					for _, ev := range events {
 						if ev.Id == data.EventId {
-							if err := ev.Register(request.AuthId, data.JobId); err != nil {
+							if err := ev.Register(request.Header.AuthId, data.JobId); err != nil {
 								res = network.CreateResponse(false, err.Error())
 								break
 							}
