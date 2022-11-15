@@ -13,6 +13,7 @@ import (
 	"sdr/labo1/src/dto"
 	"sdr/labo1/src/network"
 	"sdr/labo1/src/network/client_server"
+	"sdr/labo1/src/network/lamport"
 	"sdr/labo1/src/network/server_server"
 	"sdr/labo1/src/types"
 	"sdr/labo1/src/utils"
@@ -30,6 +31,8 @@ var enableCriticDebug = false
 
 var stopServer = make(chan bool)
 
+// var lamport lamport.Lamport
+
 func Stop() {
 	stopServer <- true
 }
@@ -45,11 +48,15 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 		os.Exit(1)
 	}
 
-	interServerProtocol := server_server.CreateInterServerProtocol[any](serverConfiguration.Id, listenerServer)
+	interServerProtocol := server_server.CreateInterServerProtocol[lamport.Request](serverConfiguration.Id, listenerServer)
 
 	interServerProtocol.ConnectToServers(serverConfiguration.GetOtherServers())
 
 	// [AT THIS POINT, THE SERVER IS CONNECTED TO ALL OTHER SERVERS]
+
+	lamport := lamport.InitLamport(interServerProtocol)
+
+	lamport.Start() // Start listening to Lamport Messages
 
 	// init chan data structure
 	chanData := ChanData{

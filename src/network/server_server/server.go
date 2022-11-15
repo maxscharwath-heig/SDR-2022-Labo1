@@ -120,20 +120,10 @@ func (p *InterServerProtocol[T]) GetMessageChan() chan T {
 	return p.chanMessage
 }
 
-/*
-func (p *InterServerProtocol[T]) GetMessage() {
-	for {
-		select {
-		case msg := <-p.chanMessage:
-			//TODO
-			//msg.serverId is the serverId of the sender
-			//msg.data is the data received (LamportStruct)
-
-			//Example
-			p.SendTo(msg.serverId, msg.data) // Send the data back to the sender
-			p.SendToAll(msg.data) // Send the data to all the other servers
-			utils.LogInfo(false, "Message received from server", msg.serverId)
-		}
-	}
+func (p *InterServerProtocol[T]) GetServerId() int {
+	return p.serverId
 }
-*/
+
+func (p *InterServerProtocol[T]) GetNumberOfServers() int {
+	return len(p.connections)
+}
