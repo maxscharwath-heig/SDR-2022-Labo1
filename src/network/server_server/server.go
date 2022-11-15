@@ -7,28 +7,19 @@ import (
 	"sdr/labo1/src/utils"
 )
 
-type LamportStruct struct {
-	//TODO
-}
-
-type message struct {
-	serverId int
-	data     LamportStruct
-}
-
-type InterServerProtocol struct {
+type InterServerProtocol[T any] struct {
 	serverId    int
 	listener    net.Listener
 	connections map[int]*network.Connection
-	chanMessage chan message
+	chanMessage chan T
 }
 
-func CreateInterServerProtocol(serverId int, listener net.Listener) *InterServerProtocol {
-	return &InterServerProtocol{
+func CreateInterServerProtocol[T any](serverId int, listener net.Listener) *InterServerProtocol[T] {
+	return &InterServerProtocol[T]{
 		serverId:    serverId,
 		listener:    listener,
 		connections: make(map[int]*network.Connection),
-		chanMessage: make(chan message),
+		chanMessage: make(chan T),
 	}
 }
 
@@ -37,7 +28,7 @@ type serverConnection struct {
 	conn     *network.Connection
 }
 
-func (p *InterServerProtocol) ConnectToServers(urls []string) {
+func (p *InterServerProtocol[T]) ConnectToServers(urls []string) {
 	ready := make(chan serverConnection) // Channel to wait for all connections to be ready
 	useListener := make(chan bool)       // Channel to wait if the listener is used
 	go func() {
@@ -94,14 +85,14 @@ func (p *InterServerProtocol) ConnectToServers(urls []string) {
 	go p.listenMessages() // Start listening messages
 }
 
-func (p *InterServerProtocol) SendTo(serverId int, data any) error {
+func (p *InterServerProtocol[T]) SendTo(serverId int, data T) error {
 	if conn, ok := p.connections[serverId]; ok {
 		return conn.SendJSON(data)
 	}
 	return fmt.Errorf("server %d is not connected", serverId)
 }
 
-func (p *InterServerProtocol) SendToAll(data any) error {
+func (p *InterServerProtocol[T]) SendToAll(data T) error {
 	for _, conn := range p.connections {
 		if err := conn.SendJSON(data); err != nil {
 			return err
@@ -110,22 +101,27 @@ func (p *InterServerProtocol) SendToAll(data any) error {
 	return nil
 }
 
-func (p *InterServerProtocol) listenMessages() {
+func (p *InterServerProtocol[T]) listenMessages() {
 	for serverId := range p.connections {
 		go func(serverId int) {
 			for {
-				data, err := network.GetJson[LamportStruct](*p.connections[serverId])
+				data, err := network.GetJson[T](*p.connections[serverId])
 				if err != nil {
 					utils.LogError(false, "Error receiving message from server", serverId, ":", err.Error())
 					continue
 				}
-				p.chanMessage <- message{serverId, data}
+				p.chanMessage <- data
 			}
 		}(serverId)
 	}
 }
 
-func (p *InterServerProtocol) GetMessage() {
+func (p *InterServerProtocol[T]) GetMessageChan() chan T {
+	return p.chanMessage
+}
+
+/*
+func (p *InterServerProtocol[T]) GetMessage() {
 	for {
 		select {
 		case msg := <-p.chanMessage:
@@ -133,12 +129,11 @@ func (p *InterServerProtocol) GetMessage() {
 			//msg.serverId is the serverId of the sender
 			//msg.data is the data received (LamportStruct)
 
-			/*
-				//Example
-				p.SendTo(msg.serverId, msg.data) // Send the data back to the sender
-				p.SendToAll(msg.data) // Send the data to all the other servers
-			*/
+			//Example
+			p.SendTo(msg.serverId, msg.data) // Send the data back to the sender
+			p.SendToAll(msg.data) // Send the data to all the other servers
 			utils.LogInfo(false, "Message received from server", msg.serverId)
 		}
 	}
 }
+*/
