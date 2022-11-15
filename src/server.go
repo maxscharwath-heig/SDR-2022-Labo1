@@ -75,21 +75,27 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 	protocol := client_server.ServerProtocol{
 		AuthFunc: func(credential types.Credentials) (bool, client_server.AuthId) {
 			start, end := createCriticalSection("users", "AuthFunc")
-			users := <-chanData.users
-			start()
-			defer func() {
-				end()
-				chanData.users <- users
-			}()
-			if credential.Username == "" || credential.Password == "" {
-				return false, -1
-			}
-			for _, user := range users {
-				if user.Username == credential.Username && user.Password == credential.Password {
-					return true, user.Id
+
+			for {
+				select {
+				case users := <-chanData.users:
+					start()
+					if credential.Username == "" || credential.Password == "" {
+						success, userId = false, -1
+						break
+					}
+					for _, user := range users {
+						if user.Username == credential.Username && user.Password == credential.Password {
+							success, userId = true, user.Id
+							break
+						}
+					}
+
+					end()
+					chanData.users <- users
+					return false, -1
 				}
 			}
-			return false, -1
 		},
 		Endpoints: map[string]client_server.ServerEndpoint{
 			"create":   createEndpoint(&chanData),
@@ -169,27 +175,35 @@ func createEndpoint(chanData *ChanData) client_server.ServerEndpoint {
 func showEndpoint(chanData *ChanData) client_server.ServerEndpoint {
 	return client_server.ServerEndpoint{
 		NeedsAuth: false,
-		HandlerFunc: func(request request) network.Response[any] {
+		HandlerFunc: func(request request) (res network.Response[any]) {
 			data := dto.EventShow{}
 			request.GetJson(&data)
 
 			start, end := createCriticalSection("events", "HandlerFunc(show)")
-			events := <-chanData.events
-			start()
-			defer func() {
-				end()
-				chanData.events <- events
-			}()
 
-			if data.EventId != -1 {
-				for _, ev := range events {
-					if ev.Id == data.EventId {
-						return network.CreateResponse(true, EventToDTO(ev, chanData))
+			for {
+				select {
+				case events := <-chanData.events:
+					start()
+					if data.EventId != -1 {
+						for _, ev := range events {
+							if ev.Id == data.EventId {
+								res = network.CreateResponse(true, EventToDTO(ev, chanData))
+								break
+							}
+						}
+						res = network.CreateResponse(false, "event not found")
+						break
 					}
+
+					res = network.CreateResponse(true, EventsToDTO(events, chanData))
+					end()
+					chanData.events <- events
+
+				case <-time.After(80 * time.Millisecond):
+					return network.CreateResponse(false, "timeout")
 				}
-				return network.CreateResponse(false, "event not found")
 			}
-			return network.CreateResponse(true, EventsToDTO(events, chanData))
 		},
 	}
 }
@@ -198,31 +212,39 @@ func showEndpoint(chanData *ChanData) client_server.ServerEndpoint {
 func closeEndpoint(chanData *ChanData) client_server.ServerEndpoint {
 	return client_server.ServerEndpoint{
 		NeedsAuth: true,
-		HandlerFunc: func(request request) network.Response[any] {
+		HandlerFunc: func(request request) (res network.Response[any]) {
 			data := dto.EventClose{}
 			request.GetJson(&data)
 
 			start, end := createCriticalSection("events", "HandlerFunc(close)")
-			events := <-chanData.events
-			start()
-			defer func() {
-				end()
-				chanData.events <- events
-			}()
 
-			for i, ev := range events {
-				if ev.Id == data.EventId {
-					if ev.OrganizerId != request.Header.AuthId {
-						return network.CreateResponse(false, "you are not the organizer")
+			for {
+				select {
+				case events := <-chanData.events:
+					start()
+					for i, ev := range events {
+						if ev.Id == data.EventId {
+							if ev.OrganizerId != request.Header.AuthId {
+								res = network.CreateResponse(false, "you are not the organizer")
+								break
+							}
+							if !ev.Open {
+								res = network.CreateResponse(false, "event already closed")
+								break
+							}
+							events[i].Open = false
+							res = network.CreateResponse(true, EventToDTO(events[i], chanData))
+						}
 					}
-					if !ev.Open {
-						return network.CreateResponse(false, "event already closed")
+					end()
+					chanData.events <- events
+					if &res == nil {
+						res = network.CreateResponse(false, "event not found")
 					}
-					events[i].Open = false
-					return network.CreateResponse(true, EventToDTO(events[i], chanData))
+				case <-time.After(80 * time.Millisecond):
+					return network.CreateResponse(false, "timeout")
 				}
 			}
-			return network.CreateResponse(false, "event not found")
 		},
 	}
 }
@@ -231,27 +253,36 @@ func closeEndpoint(chanData *ChanData) client_server.ServerEndpoint {
 func registerEndpoint(chanData *ChanData) client_server.ServerEndpoint {
 	return client_server.ServerEndpoint{
 		NeedsAuth: true,
-		HandlerFunc: func(request request) network.Response[any] {
+		HandlerFunc: func(request request) (res network.Response[any]) {
 			data := dto.EventRegister{}
 			request.GetJson(&data)
 
 			start, end := createCriticalSection("events", "HandlerFunc(register)")
-			events := <-chanData.events
-			start()
-			defer func() {
-				end()
-				chanData.events <- events
-			}()
 
-			for _, ev := range events {
-				if ev.Id == data.EventId {
-					if err := ev.Register(request.Header.AuthId, data.JobId); err != nil {
-						return network.CreateResponse(false, err.Error())
+			for {
+				select {
+				case events := <-chanData.events:
+					start()
+					for _, ev := range events {
+						if ev.Id == data.EventId {
+							if err := ev.Register(request.Header.AuthId, data.JobId); err != nil {
+								res = network.CreateResponse(false, err.Error())
+								break
+							}
+							res = network.CreateResponse(true, EventToDTO(ev, chanData))
+							break
+						}
 					}
-					return network.CreateResponse(true, EventToDTO(ev, chanData))
+					end()
+					chanData.events <- events
+					if &res == nil {
+						res = network.CreateResponse(false, "event not found")
+					}
+
+				case <-time.After(80 * time.Millisecond):
+					return network.CreateResponse(false, "timeout")
 				}
 			}
-			return network.CreateResponse(false, "event not found")
 		},
 	}
 }
@@ -285,14 +316,15 @@ func createCriticalSection(chanName string, name string) (start func(), end func
 // getUserById find and return and user in the user database
 func getUserById(id int, chanData *ChanData) types.User {
 	start, end := createCriticalSection("users", fmt.Sprintf("getUserById(%d)", id))
-	users := <-chanData.users
-	start()
-	defer func() {
-		end()
+
+	select {
+	case users := <-chanData.users:
+		start()
 		chanData.users <- users
-	}()
-	if user, ok := users[id]; ok {
-		return *user
+		end()
+		if user, ok := users[id]; ok {
+			return *user
+		}
 	}
 	return types.User{}
 }
