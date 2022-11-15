@@ -73,7 +73,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 	utils.LogSuccess(true, "Server started", serverConfiguration.GetCurrentUrls().Client)
 
 	protocol := client_server.ServerProtocol{
-		AuthFunc: func(credential types.Credentials) (bool, client_server.AuthId) {
+		AuthFunc: func(credential types.Credentials) (success bool, userId client_server.AuthId) {
 			start, end := createCriticalSection("users", "AuthFunc")
 
 			for {

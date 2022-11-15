@@ -28,6 +28,7 @@ func authenticate() types.Credentials {
 
 // clientProcess is the main function of the client
 func clientProcess(configuration config.ClientConfiguration) {
+	rand.Seed(time.Now().UnixNano())
 	utils.PrintClientWelcome()
 
 	server := utils.StringPrompt("Enter the server address (default: random):")
