@@ -52,9 +52,9 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 
 	// [AT THIS POINT, THE SERVER IS CONNECTED TO ALL OTHER SERVERS]
 
-	lamport := lamport.InitLamport(interServerProtocol)
+	lmpt := lamport.InitLamport(interServerProtocol)
 
-	go lamport.Start() // Start listening to Lamport Messages
+	go lmpt.Start() // Start listening to Lamport Messages
 
 	// init chan data structure
 	chanData := ChanData{
@@ -84,19 +84,23 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 				select {
 				case users := <-chanData.users:
 					start()
+
+					defer func() {
+						end()
+						chanData.users <- users
+					}()
+
 					if credential.Username == "" || credential.Password == "" {
 						success, userId = false, -1
-						break
+						return
 					}
 					for _, user := range users {
 						if user.Username == credential.Username && user.Password == credential.Password {
 							success, userId = true, user.Id
-							break
+							return
 						}
 					}
 
-					end()
-					chanData.users <- users
 					return false, -1
 				}
 			}
@@ -189,22 +193,22 @@ func showEndpoint(chanData *ChanData) client_server.ServerEndpoint {
 				select {
 				case events := <-chanData.events:
 					start()
+					defer func() {
+						end()
+						chanData.events <- events
+					}()
 					if data.EventId != -1 {
 						for _, ev := range events {
 							if ev.Id == data.EventId {
-								res = network.CreateResponse(true, EventToDTO(ev, chanData))
-								break
+								return network.CreateResponse(true, EventToDTO(ev, chanData))
 							}
 						}
-						res = network.CreateResponse(false, "event not found")
-						break
+						return network.CreateResponse(false, "event not found")
 					}
 
-					res = network.CreateResponse(true, EventsToDTO(events, chanData))
-					end()
-					chanData.events <- events
+					network.CreateResponse(true, EventsToDTO(events, chanData))
 
-				case <-time.After(80 * time.Millisecond):
+				case <-time.After(2 * time.Second):
 					return network.CreateResponse(false, "timeout")
 				}
 			}
@@ -245,6 +249,7 @@ func closeEndpoint(chanData *ChanData) client_server.ServerEndpoint {
 					if &res == nil {
 						res = network.CreateResponse(false, "event not found")
 					}
+					return
 				case <-time.After(80 * time.Millisecond):
 					return network.CreateResponse(false, "timeout")
 				}
@@ -282,6 +287,7 @@ func registerEndpoint(chanData *ChanData) client_server.ServerEndpoint {
 					if &res == nil {
 						res = network.CreateResponse(false, "event not found")
 					}
+					return
 
 				case <-time.After(80 * time.Millisecond):
 					return network.CreateResponse(false, "timeout")

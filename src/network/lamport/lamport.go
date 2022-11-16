@@ -98,6 +98,8 @@ func (l *Lamport) HandleClientReleaseCriticalSection() {
 func (l *Lamport) HandleLamportRequest(req Request) {
 	l.stamp = int(math.Max(float64(l.stamp), float64(req.Stamp)) + 1)
 
+	println("lamport: got", req.ReqType)
+
 	switch req.ReqType {
 	case REQ:
 		l.states[req.Sender] = req
