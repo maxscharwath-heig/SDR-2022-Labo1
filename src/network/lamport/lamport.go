@@ -152,7 +152,7 @@ func (l *Lamport) checkCriticalSectionAccess() {
 }
 
 func (l *Lamport) Start() {
-	println("LAMPORT !")
+	utils.LogInfo(true, "Lamport:", "started")
 	for {
 		select {
 		// REQ, ACK, REL

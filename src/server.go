@@ -31,8 +31,6 @@ var enableCriticDebug = false
 
 var stopServer = make(chan bool)
 
-// var lamport lamport.Lamport
-
 func Stop() {
 	stopServer <- true
 }
@@ -56,7 +54,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 
 	lamport := lamport.InitLamport(interServerProtocol)
 
-	lamport.Start() // Start listening to Lamport Messages
+	go lamport.Start() // Start listening to Lamport Messages
 
 	// init chan data structure
 	chanData := ChanData{
