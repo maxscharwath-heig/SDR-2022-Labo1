@@ -18,46 +18,48 @@ const (
 	REL RequestType = 2
 )
 
-type Request struct {
+type Request[T any] struct {
 	ReqType  RequestType `json:"req_type"`
 	Stamp    int         `json:"stamp"`
-	Data     any         `json:"data"`
+	Data     T           `json:"data"`
 	Sender   int         `json:"sender"`
 	Receiver int         `json:"receiver"`
 }
 
-type Lamport struct {
+type Lamport[T any] struct {
 	stamp         int
-	protocol      *server_server.InterServerProtocol[Request]
+	protocol      *server_server.InterServerProtocol[Request[T]]
 	hasAccess     bool
-	states        map[int]Request
+	states        map[int]Request[T]
 	waitForAccess chan bool
+	onData        func(data T)
 }
 
-func (l *Lamport) id() int {
+func (l *Lamport[T]) id() int {
 	return l.protocol.GetServerId()
 }
 
-func (l *Lamport) setCurrentState(request Request) {
+func (l *Lamport[T]) setCurrentState(request Request[T]) {
 	l.states[l.id()] = request
 }
 
-func (l *Lamport) currentState() Request {
+func (l *Lamport[T]) currentState() Request[T] {
 	return l.states[l.id()]
 }
 
 // InitLamport inits the needed structure for lamport's algorithm
-func InitLamport(p *server_server.InterServerProtocol[Request]) Lamport {
-	var lmp = Lamport{
+func InitLamport[T any](p *server_server.InterServerProtocol[Request[T]], onData func(data T)) Lamport[T] {
+	var lmp = Lamport[T]{
 		stamp:         0,
 		protocol:      p,
 		hasAccess:     false,
-		states:        make(map[int]Request, p.GetNumberOfServers()),
+		states:        make(map[int]Request[T], p.GetNumberOfServers()),
 		waitForAccess: make(chan bool, 1),
+		onData:        onData,
 	}
 
 	for i := 0; i < p.GetNumberOfServers(); i++ {
-		lmp.states[i] = Request{
+		lmp.states[i] = Request[T]{
 			ReqType: REL,
 			Stamp:   0,
 		}
@@ -65,7 +67,7 @@ func InitLamport(p *server_server.InterServerProtocol[Request]) Lamport {
 	return lmp
 }
 
-func (l *Lamport) debug() {
+func (l *Lamport[T]) debug() {
 	var str = map[RequestType]string{
 		REQ: "REQ",
 		ACK: "ACK",
@@ -83,9 +85,9 @@ func (l *Lamport) debug() {
 // TODO: on peut fusionner les deux functions car au final elle font la même chose (REQ, REL)
 
 // SendClientAskCriticalSection indique que le client souhaite l'accès
-func (l *Lamport) SendClientAskCriticalSection() chan bool {
+func (l *Lamport[T]) SendClientAskCriticalSection() chan bool {
 	l.stamp += 1
-	l.setCurrentState(Request{
+	l.setCurrentState(Request[T]{
 		ReqType: REQ,
 		Stamp:   l.stamp,
 		Sender:  l.id(),
@@ -96,9 +98,9 @@ func (l *Lamport) SendClientAskCriticalSection() chan bool {
 }
 
 // SendClientReleaseCriticalSection indique que le client sort de SC
-func (l *Lamport) SendClientReleaseCriticalSection(data any) {
+func (l *Lamport[T]) SendClientReleaseCriticalSection(data T) {
 	l.stamp += 1
-	l.setCurrentState(Request{
+	l.setCurrentState(Request[T]{
 		ReqType: REL,
 		Stamp:   l.stamp,
 		Sender:  l.id(),
@@ -106,10 +108,11 @@ func (l *Lamport) SendClientReleaseCriticalSection(data any) {
 	})
 
 	l.protocol.SendToAll(l.currentState())
+	l.onData(data)
 }
 
 // handleLamportRequest Traitment des messages entre serveurs
-func (l *Lamport) handleLamportRequest(req Request) {
+func (l *Lamport[T]) handleLamportRequest(req Request[T]) {
 	l.stamp = int(math.Max(float64(l.stamp), float64(req.Stamp)) + 1)
 
 	switch req.ReqType {
@@ -117,7 +120,7 @@ func (l *Lamport) handleLamportRequest(req Request) {
 		l.states[req.Sender] = req
 
 		if l.currentState().ReqType != REQ {
-			ack := Request{
+			ack := Request[T]{
 				ReqType:  ACK,
 				Stamp:    l.stamp,
 				Sender:   l.id(),
@@ -131,9 +134,8 @@ func (l *Lamport) handleLamportRequest(req Request) {
 			l.states[req.Sender] = req
 		}
 	case REL:
+		l.onData(req.Data)
 		l.states[req.Sender] = req
-
-		//UPDATE DATA
 	}
 	tmp := l.checkCriticalSectionAccess()
 	if tmp && !l.hasAccess {
@@ -143,7 +145,7 @@ func (l *Lamport) handleLamportRequest(req Request) {
 }
 
 // checkCriticalSectionAccess check if process can access to SC and set access if so
-func (l *Lamport) checkCriticalSectionAccess() bool {
+func (l *Lamport[T]) checkCriticalSectionAccess() bool {
 	if l.currentState().ReqType != REQ {
 		return false
 	}
@@ -164,7 +166,7 @@ func (l *Lamport) checkCriticalSectionAccess() bool {
 	return true
 }
 
-func (l *Lamport) Start() {
+func (l *Lamport[T]) Start() {
 	utils.LogInfo(true, "Lamport:", "started")
 	for {
 		select {
