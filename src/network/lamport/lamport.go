@@ -19,18 +19,19 @@ const (
 )
 
 type Request struct {
-	ReqType  RequestType
-	Stamp    int
-	Global   bool
-	Sender   int
-	Receiver int
+	ReqType  RequestType `json:"req_type"`
+	Stamp    int         `json:"stamp"`
+	Data     any         `json:"data"`
+	Sender   int         `json:"sender"`
+	Receiver int         `json:"receiver"`
 }
 
 type Lamport struct {
-	stamp     int
-	protocol  *server_server.InterServerProtocol[Request]
-	hasAccess bool
-	states    map[int]Request
+	stamp         int
+	protocol      *server_server.InterServerProtocol[Request]
+	hasAccess     bool
+	states        map[int]Request
+	waitForAccess chan bool
 }
 
 func (l *Lamport) id() int {
@@ -48,14 +49,18 @@ func (l *Lamport) currentState() Request {
 // InitLamport inits the needed structure for lamport's algorithm
 func InitLamport(p *server_server.InterServerProtocol[Request]) Lamport {
 	var lmp = Lamport{
-		stamp:     0,
-		protocol:  p,
-		hasAccess: false,
-		states:    make(map[int]Request, p.GetNumberOfServers()),
+		stamp:         0,
+		protocol:      p,
+		hasAccess:     false,
+		states:        make(map[int]Request, p.GetNumberOfServers()),
+		waitForAccess: make(chan bool, 1),
 	}
 
 	for i := 0; i < p.GetNumberOfServers(); i++ {
-		lmp.states[i] = Request{REL, 0, false, -1, -1}
+		lmp.states[i] = Request{
+			ReqType: REL,
+			Stamp:   0,
+		}
 	}
 	return lmp
 }
@@ -77,34 +82,34 @@ func (l *Lamport) debug() {
 
 // TODO: on peut fusionner les deux functions car au final elle font la même chose (REQ, REL)
 
-// HandleClientAskCriticalSection indique que le client souhaite l'accès
-func (l *Lamport) HandleClientAskCriticalSection() {
+// SendClientAskCriticalSection indique que le client souhaite l'accès
+func (l *Lamport) SendClientAskCriticalSection() chan bool {
 	l.stamp += 1
 	l.setCurrentState(Request{
 		ReqType: REQ,
 		Stamp:   l.stamp,
-		Global:  true,
 		Sender:  l.id(),
 	})
 
 	l.protocol.SendToAll(l.currentState())
+	return l.waitForAccess
 }
 
-// HandleClientReleaseCriticalSection indique que le client sort de SC
-func (l *Lamport) HandleClientReleaseCriticalSection() {
+// SendClientReleaseCriticalSection indique que le client sort de SC
+func (l *Lamport) SendClientReleaseCriticalSection(data any) {
 	l.stamp += 1
 	l.setCurrentState(Request{
 		ReqType: REL,
 		Stamp:   l.stamp,
-		Global:  true,
 		Sender:  l.id(),
+		Data:    data,
 	})
 
 	l.protocol.SendToAll(l.currentState())
 }
 
-// HandleLamportRequest Traiment des messages entre serveurs
-func (l *Lamport) HandleLamportRequest(req Request) {
+// handleLamportRequest Traitment des messages entre serveurs
+func (l *Lamport) handleLamportRequest(req Request) {
 	l.stamp = int(math.Max(float64(l.stamp), float64(req.Stamp)) + 1)
 
 	switch req.ReqType {
@@ -115,7 +120,6 @@ func (l *Lamport) HandleLamportRequest(req Request) {
 			ack := Request{
 				ReqType:  ACK,
 				Stamp:    l.stamp,
-				Global:   false,
 				Sender:   l.id(),
 				Receiver: req.Sender,
 			}
@@ -128,36 +132,36 @@ func (l *Lamport) HandleLamportRequest(req Request) {
 		}
 	case REL:
 		l.states[req.Sender] = req
+
+		//UPDATE DATA
 	}
-	l.checkCriticalSectionAccess()
+	tmp := l.checkCriticalSectionAccess()
+	if tmp && !l.hasAccess {
+		l.waitForAccess <- true
+	}
+	l.hasAccess = tmp
 }
 
 // checkCriticalSectionAccess check if process can access to SC and set access if so
-func (l *Lamport) checkCriticalSectionAccess() {
+func (l *Lamport) checkCriticalSectionAccess() bool {
 	if l.currentState().ReqType != REQ {
-		return
+		return false
 	}
-	oldest := true
-
 	for i := range l.states {
 		if i == l.id() {
 			continue
 		}
 
 		if l.currentState().Stamp > l.states[i].Stamp {
-			oldest = false
-			break
+			return false
 		}
 
 		if l.currentState().Stamp == l.states[i].Stamp && l.id() > i {
-			oldest = false
-			break
+			return false
 		}
 	}
 
-	if oldest {
-		l.hasAccess = true
-	}
+	return true
 }
 
 func (l *Lamport) Start() {
@@ -166,7 +170,7 @@ func (l *Lamport) Start() {
 		select {
 		// REQ, ACK, REL
 		case request := <-l.protocol.GetMessageChan():
-			l.HandleLamportRequest(request)
+			l.handleLamportRequest(request)
 			l.debug()
 			// TODO: handle internal client's "request" (demande acccès et attente d'accès)
 		}

@@ -106,10 +106,10 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 			}
 		},
 		Endpoints: map[string]client_server.ServerEndpoint{
-			"create":   createEndpoint(&chanData),
+			"create":   createEndpoint(&chanData, &lmpt),
 			"show":     showEndpoint(&chanData, &lmpt),
-			"close":    closeEndpoint(&chanData),
-			"register": registerEndpoint(&chanData),
+			"close":    closeEndpoint(&chanData, &lmpt),
+			"register": registerEndpoint(&chanData, &lmpt),
 		},
 	}
 
@@ -130,7 +130,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 type request = network.Request[client_server.HeaderResponse]
 
 // createEndpoint Registers a custom endpoint accessible on the server
-func createEndpoint(chanData *ChanData) client_server.ServerEndpoint {
+func createEndpoint(chanData *ChanData, lmpt *lamport.Lamport) client_server.ServerEndpoint {
 	return client_server.ServerEndpoint{
 		NeedsAuth: true,
 		HandlerFunc: func(request request) network.Response[any] {
@@ -168,6 +168,7 @@ func createEndpoint(chanData *ChanData) client_server.ServerEndpoint {
 			start, end := createCriticalSection("events", "HandlerFunc(create)")
 			events := <-chanData.events
 			start()
+			<-lmpt.SendClientAskCriticalSection()
 			defer func() {
 				end()
 				chanData.events <- events
@@ -193,20 +194,21 @@ func showEndpoint(chanData *ChanData, lmpt *lamport.Lamport) client_server.Serve
 				select {
 				case events := <-chanData.events:
 					start()
-					lmpt.HandleClientAskCriticalSection()
-					defer func() {
-						end()
-						chanData.events <- events
-					}()
+					<-lmpt.SendClientAskCriticalSection()
 					if data.EventId != -1 {
 						for _, ev := range events {
 							if ev.Id == data.EventId {
+								end()
+								chanData.events <- events
 								return network.CreateResponse(true, EventToDTO(ev, chanData))
 							}
 						}
+						end()
+						chanData.events <- events
 						return network.CreateResponse(false, "event not found")
 					}
-
+					end()
+					chanData.events <- events
 					network.CreateResponse(true, EventsToDTO(events, chanData))
 
 				case <-time.After(2 * time.Second):
@@ -218,7 +220,7 @@ func showEndpoint(chanData *ChanData, lmpt *lamport.Lamport) client_server.Serve
 }
 
 // closeEndpoint defines an endpoint that closes events
-func closeEndpoint(chanData *ChanData) client_server.ServerEndpoint {
+func closeEndpoint(chanData *ChanData, lmpt *lamport.Lamport) client_server.ServerEndpoint {
 	return client_server.ServerEndpoint{
 		NeedsAuth: true,
 		HandlerFunc: func(request request) (res network.Response[any]) {
@@ -231,6 +233,7 @@ func closeEndpoint(chanData *ChanData) client_server.ServerEndpoint {
 				select {
 				case events := <-chanData.events:
 					start()
+					<-lmpt.SendClientAskCriticalSection()
 					for i, ev := range events {
 						if ev.Id == data.EventId {
 							if ev.OrganizerId != request.Header.AuthId {
@@ -260,7 +263,7 @@ func closeEndpoint(chanData *ChanData) client_server.ServerEndpoint {
 }
 
 // registerEndpoint defines an endpoint that register user to events
-func registerEndpoint(chanData *ChanData) client_server.ServerEndpoint {
+func registerEndpoint(chanData *ChanData, lmpt *lamport.Lamport) client_server.ServerEndpoint {
 	return client_server.ServerEndpoint{
 		NeedsAuth: true,
 		HandlerFunc: func(request request) (res network.Response[any]) {
@@ -273,6 +276,7 @@ func registerEndpoint(chanData *ChanData) client_server.ServerEndpoint {
 				select {
 				case events := <-chanData.events:
 					start()
+					<-lmpt.SendClientAskCriticalSection()
 					for _, ev := range events {
 						if ev.Id == data.EventId {
 							if err := ev.Register(request.Header.AuthId, data.JobId); err != nil {
