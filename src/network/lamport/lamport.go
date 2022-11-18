@@ -1,9 +1,11 @@
 package lamport
 
 import (
+	"fmt"
 	"math"
 	"sdr/labo1/src/network/server_server"
 	"sdr/labo1/src/utils"
+	"strings"
 )
 
 // Lamport
@@ -11,9 +13,9 @@ import (
 type RequestType int
 
 const (
-	REQ RequestType = iota
-	ACK
-	REL
+	REQ RequestType = 0
+	ACK RequestType = 1
+	REL RequestType = 2
 )
 
 type Request struct {
@@ -52,18 +54,25 @@ func InitLamport(p *server_server.InterServerProtocol[Request]) Lamport {
 		states:    make(map[int]Request, p.GetNumberOfServers()),
 	}
 
-	// Init all to REL, stamp 0
-	for key := range lmp.states {
-		lmp.states[key] = Request{
-			ReqType:  REL,
-			Stamp:    lmp.stamp,
-			Global:   false,
-			Sender:   lmp.id(),
-			Receiver: lmp.id(),
-		}
+	for i := 0; i < p.GetNumberOfServers(); i++ {
+		lmp.states[i] = Request{REL, 0, false, -1, -1}
 	}
-
 	return lmp
+}
+
+func (l *Lamport) debug() {
+	var str = map[RequestType]string{
+		REQ: "REQ",
+		ACK: "ACK",
+		REL: "REL",
+	}
+	headers := []string{"Servers"}
+	data := []string{fmt.Sprintf("T:%d SC:%t", l.stamp, l.hasAccess)}
+	for key, state := range l.states {
+		headers = append(headers, fmt.Sprintf("Server %d", key))
+		data = append(data, fmt.Sprintf("%s(%d)", str[state.ReqType], state.Stamp))
+	}
+	utils.PrintTable(headers, []string{strings.Join(data, "\t")})
 }
 
 // TODO: on peut fusionner les deux functions car au final elle font la même chose (REQ, REL)
@@ -97,8 +106,6 @@ func (l *Lamport) HandleClientReleaseCriticalSection() {
 // HandleLamportRequest Traiment des messages entre serveurs
 func (l *Lamport) HandleLamportRequest(req Request) {
 	l.stamp = int(math.Max(float64(l.stamp), float64(req.Stamp)) + 1)
-
-	println("lamport: got", req.ReqType)
 
 	switch req.ReqType {
 	case REQ:
@@ -160,9 +167,8 @@ func (l *Lamport) Start() {
 		// REQ, ACK, REL
 		case request := <-l.protocol.GetMessageChan():
 			l.HandleLamportRequest(request)
-
+			l.debug()
 			// TODO: handle internal client's "request" (demande acccès et attente d'accès)
-			utils.LogInfo(false, "Message received from server", request.Sender)
 		}
 	}
 }

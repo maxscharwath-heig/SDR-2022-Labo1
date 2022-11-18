@@ -107,7 +107,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 		},
 		Endpoints: map[string]client_server.ServerEndpoint{
 			"create":   createEndpoint(&chanData),
-			"show":     showEndpoint(&chanData),
+			"show":     showEndpoint(&chanData, &lmpt),
 			"close":    closeEndpoint(&chanData),
 			"register": registerEndpoint(&chanData),
 		},
@@ -180,7 +180,7 @@ func createEndpoint(chanData *ChanData) client_server.ServerEndpoint {
 }
 
 // showEndpoint defines an endpoint that displays events
-func showEndpoint(chanData *ChanData) client_server.ServerEndpoint {
+func showEndpoint(chanData *ChanData, lmpt *lamport.Lamport) client_server.ServerEndpoint {
 	return client_server.ServerEndpoint{
 		NeedsAuth: false,
 		HandlerFunc: func(request request) (res network.Response[any]) {
@@ -193,6 +193,7 @@ func showEndpoint(chanData *ChanData) client_server.ServerEndpoint {
 				select {
 				case events := <-chanData.events:
 					start()
+					lmpt.HandleClientAskCriticalSection()
 					defer func() {
 						end()
 						chanData.events <- events

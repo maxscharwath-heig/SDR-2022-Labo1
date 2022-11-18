@@ -125,5 +125,5 @@ func (p *InterServerProtocol[T]) GetServerId() int {
 }
 
 func (p *InterServerProtocol[T]) GetNumberOfServers() int {
-	return len(p.connections)
+	return len(p.connections) + 1
 }
