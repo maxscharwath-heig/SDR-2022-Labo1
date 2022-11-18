@@ -21,10 +21,10 @@ import (
 	"time"
 )
 
-// ChanData Defines the channels used to access concurrency critical data
-type ChanData struct {
-	users  chan map[int]*types.User
-	events chan []*types.Event
+// Data Defines the channels used to access concurrency critical data
+type Data struct {
+	users  map[int]*types.User
+	events []*types.Event
 }
 
 var enableCriticDebug = false
@@ -53,15 +53,13 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 	// [AT THIS POINT, THE SERVER IS CONNECTED TO ALL OTHER SERVERS]
 
 	// init chan data structure
-	chanData := ChanData{
-		users:  make(chan map[int]*types.User, 1),
-		events: make(chan []*types.Event, 1),
+	appData := Data{
+		users: make(map[int]*types.User),
 	}
 
 	lmpt := lamport.InitLamport[[]dto.Event](interServerProtocol, func(data []dto.Event) {
-		//TODO SHIT
-		<-chanData.events
-		chanData.events <- DTOToEvents(data)
+		//TODO: check concurrency issues...
+		appData.events = DTOToEvents(data)
 		utils.LogInfo(true, "Lamport callback called")
 	})
 
@@ -69,8 +67,8 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 
 	{ // Load configuration
 		users, events := serverConfiguration.GetData()
-		chanData.users <- users
-		chanData.events <- events
+		appData.users = users
+		appData.events = events
 	}
 
 	listenerClient, err := net.Listen("tcp", serverConfiguration.GetCurrentUrls().Client)
@@ -81,40 +79,28 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 
 	utils.LogSuccess(true, "Server started", serverConfiguration.GetCurrentUrls().Client)
 
-	protocol := client_server.ServerProtocol{
-		AuthFunc: func(credential types.Credentials) (success bool, userId client_server.AuthId) {
-			start, end := createCriticalSection("users", "AuthFunc")
-
-			select {
-			case users := <-chanData.users:
-				start()
-
-				defer func() {
-					end()
-					chanData.users <- users
-				}()
-
-				if credential.Username == "" || credential.Password == "" {
-					success, userId = false, -1
+	protocol := client_server.CreateServerProtocol(
+		func(credential types.Credentials) (success bool, userId client_server.AuthId) {
+			if credential.Username == "" || credential.Password == "" {
+				success, userId = false, -1
+				return
+			}
+			for _, user := range appData.users {
+				if user.Username == credential.Username && user.Password == credential.Password {
+					success, userId = true, user.Id
 					return
 				}
-				for _, user := range users {
-					if user.Username == credential.Username && user.Password == credential.Password {
-						success, userId = true, user.Id
-						return
-					}
-				}
-
-				return false, -1
 			}
+
+			return false, -1
 		},
-		Endpoints: map[string]client_server.ServerEndpoint{
-			"create":   createEndpoint(&chanData, &lmpt),
-			"show":     showEndpoint(&chanData, &lmpt),
-			"close":    closeEndpoint(&chanData, &lmpt),
-			"register": registerEndpoint(&chanData, &lmpt),
+		map[string]client_server.ServerEndpoint{
+			"create":   createEndpoint(&appData, &lmpt),
+			"show":     showEndpoint(&appData),
+			"close":    closeEndpoint(&appData, &lmpt),
+			"register": registerEndpoint(&appData, &lmpt),
 		},
-	}
+	)
 
 	go func() {
 		for {
@@ -122,9 +108,10 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 			if err != nil {
 				return
 			}
-			go protocol.Process(conn)
+			go protocol.HandleConnection(conn)
 		}
 	}()
+	go protocol.ProcessRequests()
 	<-stopServer
 	utils.LogInfo(true, "Stopping server")
 	_ = listenerClient.Close()
@@ -133,7 +120,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 type request = network.Request[client_server.HeaderResponse]
 
 // createEndpoint Registers a custom endpoint accessible on the server
-func createEndpoint(chanData *ChanData, lmpt *lamport.Lamport[[]dto.Event]) client_server.ServerEndpoint {
+func createEndpoint(chanData *Data, lmpt *lamport.Lamport[[]dto.Event]) client_server.ServerEndpoint {
 	return client_server.ServerEndpoint{
 		NeedsAuth: true,
 		HandlerFunc: func(request request) network.Response[any] {
@@ -168,13 +155,10 @@ func createEndpoint(chanData *ChanData, lmpt *lamport.Lamport[[]dto.Event]) clie
 					Capacity: job.Capacity,
 				}
 			}
-			start, end := createCriticalSection("events", "HandlerFunc(create)")
-			events := <-chanData.events
-			start()
+			events := chanData.events
 			<-lmpt.SendClientAskCriticalSection()
 			defer func() {
-				end()
-				chanData.events <- events
+				lmpt.SendClientReleaseCriticalSection(EventsToDTO(events, chanData))
 			}()
 			event.Id = len(events) + 1
 			events = append(events, event)
@@ -184,112 +168,79 @@ func createEndpoint(chanData *ChanData, lmpt *lamport.Lamport[[]dto.Event]) clie
 }
 
 // showEndpoint defines an endpoint that displays events
-func showEndpoint(chanData *ChanData, lmpt *lamport.Lamport[[]dto.Event]) client_server.ServerEndpoint {
+func showEndpoint(chanData *Data) client_server.ServerEndpoint {
 	return client_server.ServerEndpoint{
 		NeedsAuth: false,
 		HandlerFunc: func(request request) network.Response[any] {
 			data := dto.EventShow{}
 			request.GetJson(&data)
 
-			start, end := createCriticalSection("events", "HandlerFunc(show)")
-
-			select {
-			case events := <-chanData.events:
-				start()
-				<-lmpt.SendClientAskCriticalSection()
-				defer func() {
-					end()
-					chanData.events <- events
-					lmpt.SendClientReleaseCriticalSection(EventsToDTO(events, chanData))
-				}()
-				if data.EventId != -1 {
-					for _, ev := range events {
-						if ev.Id == data.EventId {
-							return network.CreateResponse(true, EventToDTO(ev, chanData))
-						}
+			events := chanData.events
+			if data.EventId != -1 {
+				for _, ev := range events {
+					if ev.Id == data.EventId {
+						return network.CreateResponse(true, EventToDTO(ev, chanData))
 					}
-					return network.CreateResponse(false, "event not found")
 				}
-				return network.CreateResponse(true, EventsToDTO(events, chanData))
-
-			case <-time.After(2 * time.Second):
-				return network.CreateResponse(false, "timeout")
+				return network.CreateResponse(false, "event not found")
 			}
+			return network.CreateResponse(true, EventsToDTO(events, chanData))
 		},
 	}
 }
 
 // closeEndpoint defines an endpoint that closes events
-func closeEndpoint(chanData *ChanData, lmpt *lamport.Lamport[[]dto.Event]) client_server.ServerEndpoint {
+func closeEndpoint(chanData *Data, lmpt *lamport.Lamport[[]dto.Event]) client_server.ServerEndpoint {
 	return client_server.ServerEndpoint{
 		NeedsAuth: true,
 		HandlerFunc: func(request request) network.Response[any] {
 			data := dto.EventClose{}
 			request.GetJson(&data)
 
-			start, end := createCriticalSection("events", "HandlerFunc(close)")
-
-			select {
-			case events := <-chanData.events:
-				start()
-				<-lmpt.SendClientAskCriticalSection()
-				defer func() {
-					end()
-					chanData.events <- events
-					lmpt.SendClientReleaseCriticalSection(EventsToDTO(events, chanData))
-				}()
-				for i, ev := range events {
-					if ev.Id == data.EventId {
-						if ev.OrganizerId != request.Header.AuthId {
-							return network.CreateResponse(false, "you are not the organizer")
-						}
-						if !ev.Open {
-							return network.CreateResponse(false, "event already closed")
-						}
-						events[i].Open = false
-						return network.CreateResponse(true, EventToDTO(events[i], chanData))
+			events := chanData.events
+			<-lmpt.SendClientAskCriticalSection()
+			defer func() {
+				lmpt.SendClientReleaseCriticalSection(EventsToDTO(events, chanData))
+			}()
+			for i, ev := range events {
+				if ev.Id == data.EventId {
+					if ev.OrganizerId != request.Header.AuthId {
+						return network.CreateResponse(false, "you are not the organizer")
 					}
+					if !ev.Open {
+						return network.CreateResponse(false, "event already closed")
+					}
+					events[i].Open = false
+					return network.CreateResponse(true, EventToDTO(events[i], chanData))
 				}
-				return network.CreateResponse(false, "event not found")
-			case <-time.After(80 * time.Millisecond):
-				return network.CreateResponse(false, "timeout")
 			}
+			return network.CreateResponse(false, "event not found")
 		},
 	}
 }
 
 // registerEndpoint defines an endpoint that register user to events
-func registerEndpoint(chanData *ChanData, lmpt *lamport.Lamport[[]dto.Event]) client_server.ServerEndpoint {
+func registerEndpoint(chanData *Data, lmpt *lamport.Lamport[[]dto.Event]) client_server.ServerEndpoint {
 	return client_server.ServerEndpoint{
 		NeedsAuth: true,
 		HandlerFunc: func(request request) network.Response[any] {
 			data := dto.EventRegister{}
 			request.GetJson(&data)
 
-			start, end := createCriticalSection("events", "HandlerFunc(register)")
-
-			select {
-			case events := <-chanData.events:
-				start()
-				<-lmpt.SendClientAskCriticalSection()
-				defer func() {
-					end()
-					chanData.events <- events
-					lmpt.SendClientReleaseCriticalSection(EventsToDTO(events, chanData))
-				}()
-				for _, ev := range events {
-					if ev.Id == data.EventId {
-						if err := ev.Register(request.Header.AuthId, data.JobId); err != nil {
-							return network.CreateResponse(false, err.Error())
-						}
-						return network.CreateResponse(true, EventToDTO(ev, chanData))
+			events := chanData.events
+			<-lmpt.SendClientAskCriticalSection()
+			defer func() {
+				lmpt.SendClientReleaseCriticalSection(EventsToDTO(events, chanData))
+			}()
+			for _, ev := range events {
+				if ev.Id == data.EventId {
+					if err := ev.Register(request.Header.AuthId, data.JobId); err != nil {
+						return network.CreateResponse(false, err.Error())
 					}
+					return network.CreateResponse(true, EventToDTO(ev, chanData))
 				}
-				return network.CreateResponse(false, "event not found")
-
-			case <-time.After(80 * time.Millisecond):
-				return network.CreateResponse(false, "timeout")
 			}
+			return network.CreateResponse(false, "event not found")
 		},
 	}
 }
@@ -321,23 +272,16 @@ func createCriticalSection(chanName string, name string) (start func(), end func
 }
 
 // getUserById find and return and user in the user database
-func getUserById(id int, chanData *ChanData) types.User {
-	start, end := createCriticalSection("users", fmt.Sprintf("getUserById(%d)", id))
-
-	select {
-	case users := <-chanData.users:
-		start()
-		chanData.users <- users
-		end()
-		if user, ok := users[id]; ok {
-			return *user
-		}
+func getUserById(id int, chanData *Data) types.User {
+	users := chanData.users
+	if user, ok := users[id]; ok {
+		return *user
 	}
 	return types.User{}
 }
 
 // EventToDTO transforms an event to protocol's transmissible data
-func EventToDTO(event *types.Event, chanData *ChanData) dto.Event {
+func EventToDTO(event *types.Event, chanData *Data) dto.Event {
 	var jobs []types.Job
 	for _, job := range event.Jobs {
 		jobs = append(jobs, *job)
@@ -360,7 +304,7 @@ func EventToDTO(event *types.Event, chanData *ChanData) dto.Event {
 }
 
 // EventsToDTO transforms events to protocol's transmissible data
-func EventsToDTO(events []*types.Event, chanData *ChanData) []dto.Event {
+func EventsToDTO(events []*types.Event, chanData *Data) []dto.Event {
 	var dtoEvents []dto.Event
 	for _, event := range events {
 		dtoEvents = append(dtoEvents, EventToDTO(event, chanData))

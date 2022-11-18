@@ -99,17 +99,25 @@ Affiche l'état des postes d'une manifestation.
 ![show-resume](./docs/show-resume.png)
 
 ## Protocole de communication
+
 Le protocole de communication est basé sur le protocole TCP. Les messages sont sérialisés en JSON.
+
 1. Le client envoie une chaîne de caractères au serveur appelée `Endpoint` qui indique la fonctionnalité à appeler.
-2. Le serveur va répondre avec un message de type `Header` qui indique si le `Endpoint` existe et si l'utilisateur doit être authentifié.
-3. Si la requête nécessite une authentification, le client envoie un message de type `Credentials` avec les identifiants de l'utilisateur.
-4. Si l'authentification est réussie, le serveur envoie un message de type `AuthResponse` qui indique si les identifiants sont valides.
+2. Le serveur va répondre avec un message de type `Header` qui indique si le `Endpoint` existe et si l'utilisateur doit
+   être authentifié.
+3. Si la requête nécessite une authentification, le client envoie un message de type `Credentials` avec les identifiants
+   de l'utilisateur.
+4. Si l'authentification est réussie, le serveur envoie un message de type `AuthResponse` qui indique si les
+   identifiants sont valides.
 5. Le client envoie n'importe quel type de message qui correspond à la fonctionnalité demandée.
-6. Le serveur envoie un message de type `Response` qui indique si la requête a été traitée avec succès ou non et contient le résultat de la requête.
+6. Le serveur envoie un message de type `Response` qui indique si la requête a été traitée avec succès ou non et
+   contient le résultat de la requête.
 
-Les données sont envoyées sur le réseau sous forme de chaînes de caractères finissant par un caractère de fin de ligne `\n`.
+Les données sont envoyées sur le réseau sous forme de chaînes de caractères finissant par un caractère de fin de
+ligne `\n`.
 
-Nous utilisons des structures de type DTO (Data Transfer Object) pour sérialiser les données afin de faciliter la lecture et l'écriture des messages.
+Nous utilisons des structures de type DTO (Data Transfer Object) pour sérialiser les données afin de faciliter la
+lecture et l'écriture des messages.
 
 ## Tests
 
@@ -124,7 +132,8 @@ Pour exécuter les tests, lancez la commande :
 
 ### Concurrence
 
-Pour effectuer des tests manuels sur la concurrence et sur le protocole, modifiez la configuration du serveur pour ralentir
+Pour effectuer des tests manuels sur la concurrence et sur le protocole, modifiez la configuration du serveur pour
+ralentir
 les entrées en zones critiques :
 > `"debug": false`
 
@@ -133,7 +142,8 @@ Il suffit ensuite de démarrer un serveur et plusieurs clients
 > `go run server.go` \
 > `go run client.go` (selon le nombre de clients souhaités)
 
-En exécutant des commandes depuis les clients, on peut observer les entrées / sorties en sections critiques sur le serveur:
+En exécutant des commandes depuis les clients, on peut observer les entrées / sorties en sections critiques sur le
+serveur:
 
 ![debug](./docs/debug.png)
 
