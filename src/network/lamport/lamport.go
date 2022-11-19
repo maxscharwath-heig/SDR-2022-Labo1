@@ -82,8 +82,6 @@ func (l *Lamport[T]) debug() {
 	utils.PrintTable(headers, []string{strings.Join(data, "\t")})
 }
 
-// TODO: on peut fusionner les deux functions car au final elle font la même chose (REQ, REL)
-
 // SendClientAskCriticalSection indique que le client souhaite l'accès
 func (l *Lamport[T]) SendClientAskCriticalSection() chan bool {
 	l.stamp += 1

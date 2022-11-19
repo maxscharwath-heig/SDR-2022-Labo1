@@ -115,6 +115,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 	<-stopServer
 	utils.LogInfo(true, "Stopping server")
 	_ = listenerClient.Close()
+	_ = listenerServer.Close()
 }
 
 type request = network.Request[client_server.HeaderResponse]
