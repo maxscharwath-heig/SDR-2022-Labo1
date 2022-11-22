@@ -142,7 +142,7 @@ func (l *Lamport[T]) handleLamportRequest(req Request[T]) {
 	l.hasAccess = tmp
 }
 
-// checkCriticalSectionAccess check if process can access to SC and set access if so
+// checkCriticalSectionAccess check if process can access to SC
 func (l *Lamport[T]) checkCriticalSectionAccess() bool {
 	if l.currentState().ReqType != REQ {
 		return false
@@ -170,9 +170,9 @@ func (l *Lamport[T]) Start() {
 		select {
 		// REQ, ACK, REL
 		case request := <-l.protocol.GetMessageChan():
+			l.debug()
 			l.handleLamportRequest(request)
 			l.debug()
-			// TODO: handle internal client's "request" (demande acccès et attente d'accès)
 		}
 	}
 }

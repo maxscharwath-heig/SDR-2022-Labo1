@@ -111,6 +111,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 			go protocol.HandleConnection(conn)
 		}
 	}()
+
 	go protocol.ProcessRequests()
 	<-stopServer
 	utils.LogInfo(true, "Stopping server")

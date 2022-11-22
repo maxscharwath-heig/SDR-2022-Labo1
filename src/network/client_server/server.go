@@ -59,7 +59,7 @@ func (p ServerProtocol) ProcessRequests() {
 	}
 }
 
-// is the function that is called to process the connection. It is called in a go routine.
+// HandleConnection is the function that is called to process the connection. It is called in a go routine.
 func (p ServerProtocol) HandleConnection(c net.Conn) {
 	utils.LogInfo(false, "new connection", c.RemoteAddr())
 	defer func() {

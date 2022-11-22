@@ -886,6 +886,148 @@ func TestErrors(t *testing.T) {
 
 		expectError(t, responseError, "capacity must be greater than 0")
 	})
+
+	// Test replication of data
+	t.Run("should replicate changes when creating event", func(t *testing.T) {
+		startServers(validServerConfigs)
+
+		conn1, _ := connect(validClientConfig.Servers[0])
+		conn2, _ := connect(validClientConfig.Servers[1])
+		conn3, _ := connect(validClientConfig.Servers[2])
+
+		cli1 := client_server.CreateClientProtocol(conn1, func() types.Credentials {
+			return types.Credentials{
+				Username: "user1",
+				Password: "pass1",
+			}
+		})
+
+		cli2 := client_server.CreateClientProtocol(conn2, func() types.Credentials {
+			return types.Credentials{
+				Username: "user1",
+				Password: "pass1",
+			}
+		})
+
+		cli3 := client_server.CreateClientProtocol(conn3, func() types.Credentials {
+			return types.Credentials{
+				Username: "user1",
+				Password: "pass1",
+			}
+		})
+
+		t.Cleanup(func() {
+			_ = conn1.Close()
+			_ = conn2.Close()
+			_ = conn3.Close()
+			for range validServerConfigs {
+				server.Stop()
+			}
+		})
+
+		_, _ = cli1.SendRequest("create", func(auth client_server.AuthId) any {
+			return dto.EventCreate{
+				Name: "Test new event",
+				Jobs: []dto.Job{
+					{
+						Name:     "Test",
+						Capacity: 2,
+					},
+				},
+			}
+		})
+
+		jsonCli2, _ := cli2.SendRequest("show", func(auth client_server.AuthId) any {
+			return dto.EventShow{
+				EventId: 1,
+				Resume:  false,
+			}
+		})
+
+		jsonCli3, _ := cli3.SendRequest("show", func(auth client_server.AuthId) any {
+			return dto.EventShow{
+				EventId: 1,
+				Resume:  false,
+			}
+		})
+
+		expect(t, jsonCli2, "{\"success\":true,\"data\":{\"id\":1,\"name\":\"Test new event\",\"open\":true,\"jobs\":[{\"id\":1,\"name\":\"Test\",\"capacity\":2,\"count\":0}],\"organizer\":{\"id\":1,\"username\":\"user1\"},\"participants\":[]}}")
+		expect(t, jsonCli3, "{\"success\":true,\"data\":{\"id\":1,\"name\":\"Test new event\",\"open\":true,\"jobs\":[{\"id\":1,\"name\":\"Test\",\"capacity\":2,\"count\":0}],\"organizer\":{\"id\":1,\"username\":\"user1\"},\"participants\":[]}}")
+	})
+
+	t.Run("should replicate changes when closing event", func(t *testing.T) {
+		startServers(validServerConfigs)
+
+		conn1, _ := connect(validClientConfig.Servers[0])
+		conn2, _ := connect(validClientConfig.Servers[1])
+		conn3, _ := connect(validClientConfig.Servers[2])
+
+		cli1 := client_server.CreateClientProtocol(conn1, func() types.Credentials {
+			return types.Credentials{
+				Username: "user1",
+				Password: "pass1",
+			}
+		})
+
+		cli2 := client_server.CreateClientProtocol(conn2, func() types.Credentials {
+			return types.Credentials{
+				Username: "user1",
+				Password: "pass1",
+			}
+		})
+
+		cli3 := client_server.CreateClientProtocol(conn3, func() types.Credentials {
+			return types.Credentials{
+				Username: "user1",
+				Password: "pass1",
+			}
+		})
+
+		t.Cleanup(func() {
+			_ = conn1.Close()
+			_ = conn2.Close()
+			_ = conn3.Close()
+			for range validServerConfigs {
+				server.Stop()
+			}
+		})
+
+		_, _ = cli1.SendRequest("create", func(auth client_server.AuthId) any {
+			return dto.EventCreate{
+				Name: "Test new event",
+				Jobs: []dto.Job{
+					{
+						Name:     "Test",
+						Capacity: 2,
+					},
+				},
+			}
+		})
+
+		_, _ = cli2.SendRequest("close", func(auth client_server.AuthId) any {
+			return dto.EventClose{
+				EventId: 1,
+			}
+		})
+
+		jsonCli2, _ := cli2.SendRequest("show", func(auth client_server.AuthId) any {
+			return dto.EventShow{
+				EventId: 1,
+				Resume:  false,
+			}
+		})
+
+		jsonCli3, _ := cli3.SendRequest("show", func(auth client_server.AuthId) any {
+			return dto.EventShow{
+				EventId: 1,
+				Resume:  false,
+			}
+		})
+
+		expect(t, jsonCli2, "{\"success\":true,\"data\":{\"id\":1,\"name\":\"Test new event\",\"open\":false,\"jobs\":[{\"id\":1,\"name\":\"Test\",\"capacity\":2,\"count\":0}],\"organizer\":{\"id\":1,\"username\":\"user1\"},\"participants\":[]}}")
+		expect(t, jsonCli3, "{\"success\":true,\"data\":{\"id\":1,\"name\":\"Test new event\",\"open\":false,\"jobs\":[{\"id\":1,\"name\":\"Test\",\"capacity\":2,\"count\":0}],\"organizer\":{\"id\":1,\"username\":\"user1\"},\"participants\":[]}}")
+	})
+
 }
 
 func startServers(servers []*config.ServerConfiguration) {
