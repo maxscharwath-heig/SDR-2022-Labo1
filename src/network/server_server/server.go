@@ -73,14 +73,14 @@ func (p *InterServerProtocol[T]) ConnectToServers(urls []string) {
 			}
 		}(url)
 	}
-	utils.LogInfo(true, "Waiting for all servers to connect...")
+	utils.LogInfo(false, "Waiting for all servers to connect...")
 	for range urls {
 		server := <-ready
-		utils.LogSuccess(true, "Server", server.serverId, "connected")
+		utils.LogSuccess(false, "Server", server.serverId, "connected")
 		p.connections[server.serverId] = server.conn
 	}
 	useListener <- false // stop the listener
-	utils.LogSuccess(true, "All servers connected!")
+	utils.LogSuccess(false, "All servers connected!")
 
 	go p.listenMessages() // Start listening messages
 }

@@ -18,6 +18,10 @@ func SetEnabled(enable bool) {
 	enabled = enable
 }
 
+func IsLogEnabled() bool {
+	return enabled
+}
+
 func LogInfo(force bool, prefix string, data ...any) {
 	Log(force, fmt.Sprintf("ℹ️ INFO (%s)", prefix), colors.Blue, data...)
 }

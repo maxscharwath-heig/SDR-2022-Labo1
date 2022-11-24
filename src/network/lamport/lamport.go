@@ -85,6 +85,10 @@ func InitLamport[T any](p *server_server.InterServerProtocol[Request[T]], onData
 }
 
 func (l *Lamport[T]) debug() {
+	if !utils.IsLogEnabled() {
+		return
+	}
+
 	var str = map[RequestType]string{
 		REQ: "REQ",
 		ACK: "ACK",
@@ -180,7 +184,7 @@ func (l *Lamport[T]) checkCriticalSectionAccess() bool {
 }
 
 func (l *Lamport[T]) Start() {
-	utils.LogInfo(true, "Lamport:", "started")
+	utils.LogInfo(false, "Lamport:", "started")
 	for {
 		select {
 		// REQ, ACK, REL

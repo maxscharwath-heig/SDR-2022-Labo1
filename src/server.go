@@ -51,9 +51,8 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 	}
 
 	lmpt := lamport.InitLamport[[]dto.Event](interServerProtocol, func(data []dto.Event) {
-		//TODO: check concurrency issues...
 		appData.events = DTOToEvents(data)
-		utils.LogInfo(true, "Lamport callback called")
+		utils.LogInfo(false, "Lamport callback called")
 	})
 
 	go lmpt.Start() // Start listening to Lamport Messages
