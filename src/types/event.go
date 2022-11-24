@@ -3,7 +3,9 @@
 
 package types
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Event contains all the data of an event
 type Event struct {
@@ -18,12 +20,14 @@ type Event struct {
 // Unregister removes a user from a job that was previously registered
 func (event *Event) Unregister(userId int) {
 	if jobId, ok := event.Participants[userId]; ok {
-		event.Jobs[jobId].Count--
+		if event.Jobs[jobId] != nil {
+			event.Jobs[jobId].Count--
+		}
 	}
 	delete(event.Participants, userId)
 }
 
-// Register adds an user to a job
+// Register adds a user to a job
 func (event *Event) Register(userId int, jobId int) error {
 	if job, ok := event.Jobs[jobId]; ok {
 		if !event.Open {

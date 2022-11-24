@@ -58,12 +58,12 @@ func (l *Lamport[T]) sendRequest(request Request[T]) {
 
 func (l *Lamport[T]) setLamportState(serverId int, request Request[T]) {
 	l.states[serverId] = request
-	l.debug()
 	tmp := l.checkCriticalSectionAccess()
 	if tmp && !l.hasAccess {
 		l.hasAccess = true
 		l.waitForAccess <- true
 	}
+	l.debug()
 }
 
 // InitLamport inits the needed structure for lamport's algorithm
