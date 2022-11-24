@@ -1,6 +1,7 @@
 package client_server
 
 import (
+	"fmt"
 	"io"
 	"net"
 	"sdr/labo1/src/network"
@@ -44,7 +45,7 @@ func CreateServerProtocol(authFunc AuthFunc, endpoints map[string]ServerEndpoint
 	return ServerProtocol{
 		AuthFunc:       authFunc,
 		Endpoints:      endpoints,
-		pendingRequest: make(chan pendingRequest, 1),
+		pendingRequest: make(chan pendingRequest),
 	}
 }
 
@@ -52,11 +53,16 @@ func (p ServerProtocol) ProcessRequests() {
 	for {
 		select {
 		case pending := <-p.pendingRequest:
-			utils.LogInfo(true, "Start processing request", pending.request.EndpointId, pending.request.Conn.RemoteAddr())
+			start, send := utils.CreateCriticalSection(fmt.Sprintf("request %s", pending.request.EndpointId))
+			start()
 			pending.callback()
-			utils.LogInfo(true, "Finished processing request", pending.request.EndpointId, pending.request.Conn.RemoteAddr())
+			send()
 		}
 	}
+}
+
+func (p ServerProtocol) addPending(request network.Request[HeaderResponse], callback func()) {
+	p.pendingRequest <- pendingRequest{request, callback}
 }
 
 // HandleConnection is the function that is called to process the connection. It is called in a go routine.
@@ -105,7 +111,7 @@ func (p ServerProtocol) HandleConnection(c net.Conn) {
 				continue
 			}
 
-			p.pendingRequest <- pendingRequest{request, func() { // Add the request to the pending requests
+			go p.addPending(request, func() { // Add the request to the pending requests
 				if request.Header.NeedsAuth {
 					var credentials types.Credentials
 
@@ -132,7 +138,7 @@ func (p ServerProtocol) HandleConnection(c net.Conn) {
 						return
 					}
 				}
-				p.pendingRequest <- pendingRequest{request, func() { // Add processing to the pending request queue
+				go p.addPending(request, func() { // Add processing to the pending request queue
 					defer func() {
 						ready <- struct{}{}
 					}()
@@ -148,10 +154,8 @@ func (p ServerProtocol) HandleConnection(c net.Conn) {
 						utils.LogWarning(false, "error while sending response", err)
 						return
 					}
-				},
-				}
-			},
-			}
+				})
+			})
 		}
 	}
 }

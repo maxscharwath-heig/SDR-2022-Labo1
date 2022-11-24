@@ -9,7 +9,7 @@
       "server": "localhost:11001"
     }
   ],
-  "debug": false,
+  "debug": true,
   "showInfosLogs": false,
   "users": [
     {
