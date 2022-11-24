@@ -8,8 +8,6 @@ import (
 	"strings"
 )
 
-// Lamport
-
 type RequestType int
 
 const (
@@ -60,8 +58,8 @@ func (l *Lamport[T]) setLamportState(serverId int, request Request[T]) {
 	l.states[serverId] = request
 	tmp := l.checkCriticalSectionAccess()
 	if tmp && !l.hasAccess {
-		l.hasAccess = true
 		l.waitForAccess <- true
+		l.hasAccess = true
 	}
 	l.debug()
 }
