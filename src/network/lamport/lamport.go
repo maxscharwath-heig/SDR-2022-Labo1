@@ -23,6 +23,7 @@ type Request[T any] struct {
 	Stamp    int         `json:"stamp"`
 	Data     T           `json:"data"`
 	Sender   int         `json:"sender"`
+	Global   bool        `json:"global"`
 	Receiver int         `json:"receiver"`
 }
 
@@ -40,11 +41,29 @@ func (l *Lamport[T]) id() int {
 }
 
 func (l *Lamport[T]) setCurrentState(request Request[T]) {
-	l.states[l.id()] = request
+	l.setLamportState(l.id(), request)
 }
 
 func (l *Lamport[T]) currentState() Request[T] {
 	return l.states[l.id()]
+}
+
+func (l *Lamport[T]) sendRequest(request Request[T]) {
+	if request.Global {
+		_ = l.protocol.SendToAll(request)
+	} else {
+		_ = l.protocol.SendTo(request.Receiver, request)
+	}
+}
+
+func (l *Lamport[T]) setLamportState(serverId int, request Request[T]) {
+	l.states[serverId] = request
+	l.debug()
+	tmp := l.checkCriticalSectionAccess()
+	if tmp && !l.hasAccess {
+		l.hasAccess = true
+		l.waitForAccess <- true
+	}
 }
 
 // InitLamport inits the needed structure for lamport's algorithm
@@ -89,23 +108,26 @@ func (l *Lamport[T]) SendClientAskCriticalSection() chan bool {
 		ReqType: REQ,
 		Stamp:   l.stamp,
 		Sender:  l.id(),
+		Global:  true,
 	})
 
-	l.protocol.SendToAll(l.currentState())
+	l.sendRequest(l.currentState())
 	return l.waitForAccess
 }
 
 // SendClientReleaseCriticalSection indique que le client sort de SC
 func (l *Lamport[T]) SendClientReleaseCriticalSection(data T) {
+	l.hasAccess = false
 	l.stamp += 1
 	l.setCurrentState(Request[T]{
 		ReqType: REL,
 		Stamp:   l.stamp,
 		Sender:  l.id(),
 		Data:    data,
+		Global:  true,
 	})
 
-	l.protocol.SendToAll(l.currentState())
+	l.sendRequest(l.currentState())
 	l.onData(data)
 }
 
@@ -115,7 +137,7 @@ func (l *Lamport[T]) handleLamportRequest(req Request[T]) {
 
 	switch req.ReqType {
 	case REQ:
-		l.states[req.Sender] = req
+		l.setLamportState(req.Sender, req)
 
 		if l.currentState().ReqType != REQ {
 			ack := Request[T]{
@@ -124,22 +146,17 @@ func (l *Lamport[T]) handleLamportRequest(req Request[T]) {
 				Sender:   l.id(),
 				Receiver: req.Sender,
 			}
-			l.protocol.SendTo(ack.Receiver, ack)
+			l.sendRequest(ack)
 		}
 
 	case ACK:
 		if l.states[req.Sender].ReqType != REQ {
-			l.states[req.Sender] = req
+			l.setLamportState(req.Sender, req)
 		}
 	case REL:
 		l.onData(req.Data)
-		l.states[req.Sender] = req
+		l.setLamportState(req.Sender, req)
 	}
-	tmp := l.checkCriticalSectionAccess()
-	if tmp && !l.hasAccess {
-		l.waitForAccess <- true
-	}
-	l.hasAccess = tmp
 }
 
 // checkCriticalSectionAccess check if process can access to SC
@@ -170,9 +187,7 @@ func (l *Lamport[T]) Start() {
 		select {
 		// REQ, ACK, REL
 		case request := <-l.protocol.GetMessageChan():
-			l.debug()
 			l.handleLamportRequest(request)
-			l.debug()
 		}
 	}
 }

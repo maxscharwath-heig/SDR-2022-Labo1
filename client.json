@@ -3,5 +3,5 @@
     "localhost:10000",
     "localhost:10001"
   ],
-  "showInfosLogs": true
+  "showInfosLogs": false
 }
