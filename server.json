@@ -7,9 +7,13 @@
     {
       "client": "localhost:10001",
       "server": "localhost:11001"
+    },
+    {
+      "client": "localhost:10002",
+      "server": "localhost:11002"
     }
   ],
-  "debug": true,
+  "debug": false,
   "showInfosLogs": false,
   "users": [
     {

@@ -1,7 +1,8 @@
 {
   "servers": [
     "localhost:10000",
-    "localhost:10001"
+    "localhost:10001",
+    "localhost:10002"
   ],
   "showInfosLogs": false
 }

@@ -14,7 +14,7 @@ import (
 )
 
 func printLogo() {
-	version := "v1.0.0"
+	version := "v2.0.0"
 	fmt.Println(colors.Purple+colors.Bold+"\n▄▀▀▀ █▀▀▄ █▀▀▄\n ▀▀▄ █  █ █▄▄▀\n▄▄▄▀ █▄▄▀ █  █", version, colors.Reset)
 	fmt.Println(colors.Red+colors.Bold+"by Nicolas Crausaz & Maxime Scharwath", colors.Reset)
 }
