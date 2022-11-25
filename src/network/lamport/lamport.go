@@ -31,6 +31,7 @@ type Lamport[T any] struct {
 	hasAccess     bool
 	states        map[int]Request[T]
 	waitForAccess chan bool
+	setAccess     chan bool
 	onData        func(data T)
 }
 
@@ -56,11 +57,7 @@ func (l *Lamport[T]) sendRequest(request Request[T]) {
 
 func (l *Lamport[T]) setLamportState(serverId int, request Request[T]) {
 	l.states[serverId] = request
-	tmp := l.checkCriticalSectionAccess()
-	if tmp && !l.hasAccess {
-		l.waitForAccess <- true
-		l.hasAccess = true
-	}
+	l.checkCriticalSectionAccess()
 	l.debug()
 }
 
@@ -72,6 +69,7 @@ func InitLamport[T any](p *server_server.InterServerProtocol[Request[T]], onData
 		hasAccess:     false,
 		states:        make(map[int]Request[T], p.GetNumberOfServers()),
 		waitForAccess: make(chan bool, 1),
+		setAccess:     make(chan bool, 1),
 		onData:        onData,
 	}
 
@@ -119,7 +117,7 @@ func (l *Lamport[T]) SendClientAskCriticalSection() chan bool {
 
 // SendClientReleaseCriticalSection indique que le client sort de SC
 func (l *Lamport[T]) SendClientReleaseCriticalSection(data T) {
-	l.hasAccess = false
+	l.setAccess <- false
 	l.stamp += 1
 	l.setCurrentState(Request[T]{
 		ReqType: REL,
@@ -161,26 +159,19 @@ func (l *Lamport[T]) handleLamportRequest(req Request[T]) {
 	}
 }
 
-// checkCriticalSectionAccess check if process can access to SC
-func (l *Lamport[T]) checkCriticalSectionAccess() bool {
+func (l *Lamport[T]) checkCriticalSectionAccess() {
 	if l.currentState().ReqType != REQ {
-		return false
+		return
 	}
 	for i := range l.states {
 		if i == l.id() {
 			continue
 		}
-
-		if l.currentState().Stamp > l.states[i].Stamp {
-			return false
-		}
-
-		if l.currentState().Stamp == l.states[i].Stamp && l.id() > i {
-			return false
+		if l.currentState().Stamp > l.states[i].Stamp || l.currentState().Stamp == l.states[i].Stamp && l.id() > i {
+			return
 		}
 	}
-
-	return true
+	l.setAccess <- true
 }
 
 func (l *Lamport[T]) Start() {
@@ -190,6 +181,11 @@ func (l *Lamport[T]) Start() {
 		// REQ, ACK, REL
 		case request := <-l.protocol.GetMessageChan():
 			l.handleLamportRequest(request)
+		case hasAccess := <-l.setAccess:
+			if hasAccess && !l.hasAccess {
+				l.waitForAccess <- true
+			}
+			l.hasAccess = hasAccess
 		}
 	}
 }
