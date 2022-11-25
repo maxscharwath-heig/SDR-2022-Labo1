@@ -39,10 +39,6 @@ func (l *Lamport[T]) id() int {
 	return l.protocol.GetServerId()
 }
 
-func (l *Lamport[T]) setCurrentState(request Request[T]) {
-	l.setLamportState(l.id(), request)
-}
-
 func (l *Lamport[T]) currentState() Request[T] {
 	return l.states[l.id()]
 }
@@ -55,8 +51,8 @@ func (l *Lamport[T]) sendRequest(request Request[T]) {
 	}
 }
 
-func (l *Lamport[T]) setLamportState(serverId int, request Request[T]) {
-	l.states[serverId] = request
+func (l *Lamport[T]) setLamportState(request Request[T]) {
+	l.states[request.Sender] = request
 	l.checkCriticalSectionAccess()
 	l.debug()
 }
@@ -68,8 +64,8 @@ func InitLamport[T any](p *server_server.InterServerProtocol[Request[T]], onData
 		protocol:      p,
 		hasAccess:     false,
 		states:        make(map[int]Request[T], p.GetNumberOfServers()),
-		waitForAccess: make(chan bool, 1),
-		setAccess:     make(chan bool, 1),
+		waitForAccess: make(chan bool),
+		setAccess:     make(chan bool),
 		onData:        onData,
 	}
 
@@ -104,7 +100,7 @@ func (l *Lamport[T]) debug() {
 // SendClientAskCriticalSection indique que le client souhaite l'accès
 func (l *Lamport[T]) SendClientAskCriticalSection() chan bool {
 	l.stamp += 1
-	l.setCurrentState(Request[T]{
+	l.setLamportState(Request[T]{
 		ReqType: REQ,
 		Stamp:   l.stamp,
 		Sender:  l.id(),
@@ -119,7 +115,7 @@ func (l *Lamport[T]) SendClientAskCriticalSection() chan bool {
 func (l *Lamport[T]) SendClientReleaseCriticalSection(data T) {
 	l.setAccess <- false
 	l.stamp += 1
-	l.setCurrentState(Request[T]{
+	l.setLamportState(Request[T]{
 		ReqType: REL,
 		Stamp:   l.stamp,
 		Sender:  l.id(),
@@ -137,7 +133,7 @@ func (l *Lamport[T]) handleLamportRequest(req Request[T]) {
 
 	switch req.ReqType {
 	case REQ:
-		l.setLamportState(req.Sender, req)
+		l.setLamportState(req)
 
 		if l.currentState().ReqType != REQ {
 			ack := Request[T]{
@@ -151,11 +147,11 @@ func (l *Lamport[T]) handleLamportRequest(req Request[T]) {
 
 	case ACK:
 		if l.states[req.Sender].ReqType != REQ {
-			l.setLamportState(req.Sender, req)
+			l.setLamportState(req)
 		}
 	case REL:
 		l.onData(req.Data)
-		l.setLamportState(req.Sender, req)
+		l.setLamportState(req)
 	}
 }
 
