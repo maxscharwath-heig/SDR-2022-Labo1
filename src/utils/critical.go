@@ -1,3 +1,6 @@
+// SDR - Labo 2
+// Nicolas Crausaz & Maxime Scharwath
+
 package utils
 
 import (

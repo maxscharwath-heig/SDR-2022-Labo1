@@ -1,4 +1,4 @@
-// SDR - Labo 1
+// SDR - Labo 2
 // Nicolas Crausaz & Maxime Scharwath
 
 // The file contains various printing utilities used in the application

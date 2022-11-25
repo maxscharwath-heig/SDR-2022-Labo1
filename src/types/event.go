@@ -1,4 +1,4 @@
-// SDR - Labo 1
+// SDR - Labo 2
 // Nicolas Crausaz & Maxime Scharwath
 
 package types
@@ -20,8 +20,8 @@ type Event struct {
 // Unregister removes a user from a job that was previously registered
 func (event *Event) Unregister(userId int) {
 	if jobId, ok := event.Participants[userId]; ok {
-		if event.Jobs[jobId] != nil {
-			event.Jobs[jobId].Count--
+		if job, okJob := event.Jobs[jobId]; okJob {
+			job.Count--
 		}
 	}
 	delete(event.Participants, userId)

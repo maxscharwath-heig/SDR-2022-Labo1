@@ -1,4 +1,4 @@
-// SDR - Labo 1
+// SDR - Labo 2
 // Nicolas Crausaz & Maxime Scharwath
 
 // Defines prompt utilities used in the application

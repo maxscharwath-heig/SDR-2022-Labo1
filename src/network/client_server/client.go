@@ -1,3 +1,6 @@
+// SDR - Labo 2
+// Nicolas Crausaz & Maxime Scharwath
+
 package client_server
 
 import (
@@ -73,7 +76,7 @@ func (p ClientProtocol) SendRequest(endpointId string, data func(auth AuthId) an
 	return p.conn.GetLine()
 }
 
-// Close close client connexion
+// Close closes client connexion
 func (p ClientProtocol) Close() error {
 	return p.Conn.Close()
 }
