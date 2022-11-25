@@ -64,8 +64,8 @@ func InitLamport[T any](p *server_server.InterServerProtocol[Request[T]], onData
 		protocol:      p,
 		hasAccess:     false,
 		states:        make(map[int]Request[T], p.GetNumberOfServers()),
-		waitForAccess: make(chan bool),
-		setAccess:     make(chan bool),
+		waitForAccess: make(chan bool, 1),
+		setAccess:     make(chan bool, 1),
 		onData:        onData,
 	}
 
@@ -99,36 +99,38 @@ func (l *Lamport[T]) debug() {
 
 // SendClientAskCriticalSection indique que le client souhaite l'accès
 func (l *Lamport[T]) SendClientAskCriticalSection() chan bool {
-	l.stamp += 1
-	l.setLamportState(Request[T]{
+	l.protocol.GetMessageChan() <- Request[T]{
 		ReqType: REQ,
-		Stamp:   l.stamp,
 		Sender:  l.id(),
 		Global:  true,
-	})
-
-	l.sendRequest(l.currentState())
+	}
 	return l.waitForAccess
 }
 
 // SendClientReleaseCriticalSection indique que le client sort de SC
 func (l *Lamport[T]) SendClientReleaseCriticalSection(data T) {
-	l.setAccess <- false
-	l.stamp += 1
-	l.setLamportState(Request[T]{
+	l.protocol.GetMessageChan() <- Request[T]{
 		ReqType: REL,
-		Stamp:   l.stamp,
 		Sender:  l.id(),
 		Data:    data,
 		Global:  true,
-	})
+	}
+}
 
-	l.sendRequest(l.currentState())
-	l.onData(data)
+// handleLamportOutgoingMessage
+func (l *Lamport[T]) handleLamportOutgoingRequest(req Request[T]) {
+	l.stamp += 1
+	req.Stamp = l.stamp
+	l.setLamportState(req)
+	if req.ReqType == REL {
+		l.setAccess <- false
+		l.onData(req.Data)
+	}
+	l.sendRequest(req)
 }
 
 // handleLamportRequest Traitment des messages entre serveurs
-func (l *Lamport[T]) handleLamportRequest(req Request[T]) {
+func (l *Lamport[T]) handleLamportIngoingRequest(req Request[T]) {
 	l.stamp = int(math.Max(float64(l.stamp), float64(req.Stamp)) + 1)
 
 	switch req.ReqType {
@@ -176,7 +178,11 @@ func (l *Lamport[T]) Start() {
 		select {
 		// REQ, ACK, REL
 		case request := <-l.protocol.GetMessageChan():
-			l.handleLamportRequest(request)
+			if request.Sender == l.id() {
+				l.handleLamportOutgoingRequest(request)
+			} else {
+				l.handleLamportIngoingRequest(request)
+			}
 		case hasAccess := <-l.setAccess:
 			if hasAccess && !l.hasAccess {
 				l.waitForAccess <- true
