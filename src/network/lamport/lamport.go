@@ -32,7 +32,7 @@ type Lamport[T any] struct {
 	states        map[int]Request[T]
 	waitForAccess chan bool
 	setAccess     chan bool
-	onData        func(data T)
+	Data          chan T
 }
 
 func (l *Lamport[T]) id() int {
@@ -58,7 +58,7 @@ func (l *Lamport[T]) setLamportState(request Request[T]) {
 }
 
 // InitLamport inits the needed structure for lamport's algorithm
-func InitLamport[T any](p *server_server.InterServerProtocol[Request[T]], onData func(data T)) Lamport[T] {
+func InitLamport[T any](p *server_server.InterServerProtocol[Request[T]]) Lamport[T] {
 	var lmp = Lamport[T]{
 		stamp:         0,
 		protocol:      p,
@@ -66,7 +66,7 @@ func InitLamport[T any](p *server_server.InterServerProtocol[Request[T]], onData
 		states:        make(map[int]Request[T], p.GetNumberOfServers()),
 		waitForAccess: make(chan bool, 1),
 		setAccess:     make(chan bool, 1),
-		onData:        onData,
+		Data:          make(chan T, 1),
 	}
 
 	for i := 0; i < p.GetNumberOfServers(); i++ {
@@ -124,7 +124,7 @@ func (l *Lamport[T]) handleLamportOutgoingRequest(req Request[T]) {
 	l.setLamportState(req)
 	if req.ReqType == REL {
 		l.setAccess <- false
-		l.onData(req.Data)
+		l.Data <- req.Data
 	}
 	l.sendRequest(req)
 }
@@ -152,7 +152,7 @@ func (l *Lamport[T]) handleLamportIngoingRequest(req Request[T]) {
 			l.setLamportState(req)
 		}
 	case REL:
-		l.onData(req.Data)
+		l.Data <- req.Data
 		l.setLamportState(req)
 	}
 }

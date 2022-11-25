@@ -27,7 +27,7 @@ type HeaderResponse struct {
 }
 
 type pendingRequest struct {
-	request  network.Request[HeaderResponse]
+	name     string
 	callback func()
 }
 
@@ -53,7 +53,7 @@ func (p ServerProtocol) ProcessRequests() {
 	for {
 		select {
 		case pending := <-p.pendingRequest:
-			start, send := utils.CreateCriticalSection(fmt.Sprintf("request %s", pending.request.EndpointId))
+			start, send := utils.CreateCriticalSection(fmt.Sprintf("sync %s", pending.name))
 			start()
 			pending.callback()
 			send()
@@ -61,8 +61,8 @@ func (p ServerProtocol) ProcessRequests() {
 	}
 }
 
-func (p ServerProtocol) addPending(request network.Request[HeaderResponse], callback func()) {
-	p.pendingRequest <- pendingRequest{request, callback}
+func (p ServerProtocol) AddPending(name string, callback func()) {
+	p.pendingRequest <- pendingRequest{name, callback}
 }
 
 // HandleConnection is the function that is called to process the connection. It is called in a go routine.
@@ -111,7 +111,7 @@ func (p ServerProtocol) HandleConnection(c net.Conn) {
 				continue
 			}
 
-			go p.addPending(request, func() { // Add the request to the pending requests
+			go p.AddPending(fmt.Sprintf("Request %s (auth)", request.EndpointId), func() {
 				if request.Header.NeedsAuth {
 					var credentials types.Credentials
 
@@ -136,7 +136,7 @@ func (p ServerProtocol) HandleConnection(c net.Conn) {
 						return
 					}
 				}
-				go p.addPending(request, func() { // Add processing to the pending request queue
+				go p.AddPending(fmt.Sprintf("Request %s (data)", request.EndpointId), func() {
 					defer func() {
 						ready <- struct{}{}
 					}()

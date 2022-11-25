@@ -50,10 +50,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 		users: make(map[int]*types.User),
 	}
 
-	lmpt := lamport.InitLamport[[]dto.Event](interServerProtocol, func(data []dto.Event) {
-		appData.events = DTOToEvents(data)
-		utils.LogInfo(false, "Lamport callback called")
-	})
+	lmpt := lamport.InitLamport[[]dto.Event](interServerProtocol)
 
 	go lmpt.Start() // Start listening to Lamport Messages
 
@@ -101,6 +98,18 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 				return
 			}
 			go protocol.HandleConnection(conn)
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case data := <-lmpt.Data:
+				protocol.AddPending("UpdateData", func() {
+					appData.events = DTOToEvents(data)
+					utils.LogInfo(false, "Lamport callback called")
+				})
+			}
 		}
 	}()
 
