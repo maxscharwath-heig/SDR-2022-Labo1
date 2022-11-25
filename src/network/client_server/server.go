@@ -115,18 +115,16 @@ func (p ServerProtocol) HandleConnection(c net.Conn) {
 				if request.Header.NeedsAuth {
 					var credentials types.Credentials
 
-					err = conn.GetJson(&credentials)
-					if err != nil {
-						utils.LogWarning(false, "error while receiving credentials", err)
+					if e := conn.GetJson(&credentials); e != nil {
+						utils.LogWarning(false, "error while receiving credentials", e)
 						ready <- struct{}{}
 						return
 					}
 
 					isValid, auth := p.AuthFunc(credentials)
 
-					err = conn.SendJSON(AuthResponse{Success: isValid, Auth: auth})
-					if err != nil {
-						utils.LogWarning(false, "error while sending auth response", err)
+					if e := conn.SendJSON(AuthResponse{Success: isValid, Auth: auth}); e != nil {
+						utils.LogWarning(false, "error while sending auth response", e)
 						ready <- struct{}{}
 						return
 					}
@@ -142,16 +140,17 @@ func (p ServerProtocol) HandleConnection(c net.Conn) {
 					defer func() {
 						ready <- struct{}{}
 					}()
-					request.Data, err = conn.GetLine()
-					if err != nil {
-						utils.LogWarning(false, "error while receiving data", err)
+					if data, e := conn.GetLine(); e != nil {
+						utils.LogWarning(false, "error while receiving data", e)
 						return
+					} else {
+						request.Data = data
 					}
 
 					response := endpoint.HandlerFunc(request)
-					err = conn.SendJSON(response)
-					if err != nil {
-						utils.LogWarning(false, "error while sending response", err)
+
+					if e := conn.SendJSON(response); e != nil {
+						utils.LogWarning(false, "error while sending response", e)
 						return
 					}
 				})
