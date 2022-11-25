@@ -36,18 +36,29 @@ type pendingRequest struct {
 // - AuthFunc: the function that is called to authenticate the user.
 // - Endpoints: the endpoints that are registered. It is a map of the endpointId and the endpoint.
 type ServerProtocol struct {
-	AuthFunc       AuthFunc
-	Endpoints      map[string]ServerEndpoint
-	pendingRequest chan pendingRequest
-	beforeRequest  chan pendingRequest
+	AuthFunc               AuthFunc
+	Endpoints              map[string]ServerEndpoint
+	pendingRequest         chan pendingRequest
+	pendingPriorityRequest chan pendingRequest
 }
 
 func CreateServerProtocol(authFunc AuthFunc, endpoints map[string]ServerEndpoint) ServerProtocol {
 	return ServerProtocol{
-		AuthFunc:       authFunc,
-		Endpoints:      endpoints,
-		pendingRequest: make(chan pendingRequest),
-		beforeRequest:  make(chan pendingRequest),
+		AuthFunc:               authFunc,
+		Endpoints:              endpoints,
+		pendingRequest:         make(chan pendingRequest),
+		pendingPriorityRequest: make(chan pendingRequest),
+	}
+}
+
+func (p ServerProtocol) processPriorityRequests() {
+	for {
+		select {
+		case pending := <-p.pendingPriorityRequest:
+			utils.CreateCriticalSection(fmt.Sprintf("sync priority %s", pending.name), pending.callback)
+		default:
+			return
+		}
 	}
 }
 
@@ -55,23 +66,17 @@ func (p ServerProtocol) ProcessRequests() {
 	for {
 		select {
 		case pending := <-p.pendingRequest:
-			hasBefore := true
-			for hasBefore {
-				select {
-				case before := <-p.beforeRequest:
-					utils.CreateCriticalSection(fmt.Sprintf("Executing %s before %s", before.name, pending.name), before.callback)
-				default:
-					hasBefore = false
-				}
-			}
+			p.processPriorityRequests()
 			utils.CreateCriticalSection(fmt.Sprintf("sync %s", pending.name), pending.callback)
+		default:
+			p.processPriorityRequests()
 		}
 	}
 }
 
-func (p ServerProtocol) AddPending(name string, callback func(), before bool) {
-	if before {
-		p.beforeRequest <- pendingRequest{name, callback}
+func (p ServerProtocol) AddPending(name string, priority bool, callback func()) {
+	if priority {
+		p.pendingPriorityRequest <- pendingRequest{name, callback}
 	} else {
 		p.pendingRequest <- pendingRequest{name, callback}
 	}
@@ -123,7 +128,7 @@ func (p ServerProtocol) HandleConnection(c net.Conn) {
 				continue
 			}
 
-			go p.AddPending(fmt.Sprintf("Request %s (auth)", request.EndpointId), func() {
+			go p.AddPending(fmt.Sprintf("Request %s (auth)", request.EndpointId), false, func() {
 				if request.Header.NeedsAuth {
 					var credentials types.Credentials
 
@@ -148,7 +153,7 @@ func (p ServerProtocol) HandleConnection(c net.Conn) {
 						return
 					}
 				}
-				go p.AddPending(fmt.Sprintf("Request %s (data)", request.EndpointId), func() {
+				go p.AddPending(fmt.Sprintf("Request %s (data)", request.EndpointId), false, func() {
 					defer func() {
 						ready <- struct{}{}
 					}()
@@ -165,8 +170,8 @@ func (p ServerProtocol) HandleConnection(c net.Conn) {
 						utils.LogWarning(false, "error while sending response", e)
 						return
 					}
-				}, false)
-			}, false)
+				})
+			})
 		}
 	}
 }

@@ -105,10 +105,10 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 		for {
 			select {
 			case data := <-lmpt.Data:
-				protocol.AddPending("UpdateData", func() {
+				protocol.AddPending("UpdateData", true, func() {
 					appData.events = DTOToEvents(data)
 					utils.LogInfo(false, "Lamport callback called")
-				}, true)
+				})
 			}
 		}
 	}()
