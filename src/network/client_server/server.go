@@ -39,6 +39,7 @@ type ServerProtocol struct {
 	AuthFunc       AuthFunc
 	Endpoints      map[string]ServerEndpoint
 	pendingRequest chan pendingRequest
+	beforeRequest  chan pendingRequest
 }
 
 func CreateServerProtocol(authFunc AuthFunc, endpoints map[string]ServerEndpoint) ServerProtocol {
@@ -46,6 +47,7 @@ func CreateServerProtocol(authFunc AuthFunc, endpoints map[string]ServerEndpoint
 		AuthFunc:       authFunc,
 		Endpoints:      endpoints,
 		pendingRequest: make(chan pendingRequest),
+		beforeRequest:  make(chan pendingRequest),
 	}
 }
 
@@ -53,16 +55,26 @@ func (p ServerProtocol) ProcessRequests() {
 	for {
 		select {
 		case pending := <-p.pendingRequest:
-			start, send := utils.CreateCriticalSection(fmt.Sprintf("sync %s", pending.name))
-			start()
-			pending.callback()
-			send()
+			hasBefore := true
+			for hasBefore {
+				select {
+				case before := <-p.beforeRequest:
+					utils.CreateCriticalSection(fmt.Sprintf("Executing %s before %s", before.name, pending.name), before.callback)
+				default:
+					hasBefore = false
+				}
+			}
+			utils.CreateCriticalSection(fmt.Sprintf("sync %s", pending.name), pending.callback)
 		}
 	}
 }
 
-func (p ServerProtocol) AddPending(name string, callback func()) {
-	p.pendingRequest <- pendingRequest{name, callback}
+func (p ServerProtocol) AddPending(name string, callback func(), before bool) {
+	if before {
+		p.beforeRequest <- pendingRequest{name, callback}
+	} else {
+		p.pendingRequest <- pendingRequest{name, callback}
+	}
 }
 
 // HandleConnection is the function that is called to process the connection. It is called in a go routine.
@@ -153,8 +165,8 @@ func (p ServerProtocol) HandleConnection(c net.Conn) {
 						utils.LogWarning(false, "error while sending response", e)
 						return
 					}
-				})
-			})
+				}, false)
+			}, false)
 		}
 	}
 }

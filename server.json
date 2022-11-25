@@ -13,7 +13,7 @@
       "server": "localhost:11002"
     }
   ],
-  "debug": false,
+  "debug": true,
   "showInfosLogs": false,
   "users": [
     {

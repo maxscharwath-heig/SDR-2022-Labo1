@@ -14,23 +14,18 @@ func SetCriticDebug(enable bool) {
 	enableCriticDebug = enable
 }
 
-// createCriticalSection access a critical section (for debug)
-func CreateCriticalSection(name string) (start func(), end func()) {
+func CreateCriticalSection(name string, callback func()) {
 	if !enableCriticDebug {
-		return func() {}, func() {}
+		callback()
+		return
 	}
-
 	// Generate an identifier the critical section
 	b := make([]byte, 4)
 	_, _ = rand.Read(b)
 	id := hex.EncodeToString(b)
 
-	start = func() {
-		Log(true, fmt.Sprintf("CRITIC START [%s]", id), colors.BackgroundRed, fmt.Sprintf("🔒%s", name))
-		time.Sleep(time.Second * 2)
-	}
-	end = func() {
-		Log(true, fmt.Sprintf("CRITIC END   [%s]", id), colors.BackgroundRed, fmt.Sprintf("🔓%s", name))
-	}
-	return
+	Log(true, fmt.Sprintf("CRITIC START [%s]", id), colors.BackgroundRed, fmt.Sprintf("🔒%s", name))
+	time.Sleep(time.Second * 2)
+	callback()
+	Log(true, fmt.Sprintf("CRITIC END   [%s]", id), colors.BackgroundRed, fmt.Sprintf("🔓%s", name))
 }

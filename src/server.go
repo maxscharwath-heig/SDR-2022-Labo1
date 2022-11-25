@@ -108,7 +108,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 				protocol.AddPending("UpdateData", func() {
 					appData.events = DTOToEvents(data)
 					utils.LogInfo(false, "Lamport callback called")
-				})
+				}, true)
 			}
 		}
 	}()
