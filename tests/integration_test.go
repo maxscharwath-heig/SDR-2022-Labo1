@@ -35,137 +35,68 @@ func expectError(t *testing.T, err error, expected string) {
 	}
 }
 
+func startServer() {
+	go server.Start(&validServerConfig)
+	time.Sleep(30 * time.Millisecond)
+}
+
+func clean(conn *net.TCPConn) {
+	_ = conn.Close()
+	server.Stop()
+	time.Sleep(50 * time.Millisecond)
+}
+
+var validServerConfig = config.ServerConfiguration{
+	Id: 0,
+	Servers: []config.ServerUrl{
+		{
+			Client: "localhost:10000",
+			Server: "localhost:11000",
+		},
+	},
+	Users: []config.UserWithPassword{
+		{
+			1,
+			"user1",
+			"pass1",
+		},
+		{
+			2,
+			"test",
+			"test",
+		},
+	},
+	Debug:         false,
+	ShowInfosLogs: false,
+}
+
+var validClientConfig = config.ClientConfiguration{
+	Servers: []string{
+		"localhost:10000",
+	},
+}
+
 func TestSuccess(t *testing.T) {
-	validServerConfigs := []*config.ServerConfiguration{
-		{
-			Id: 0,
-			Servers: []config.ServerUrl{
-				{
-					Client: "localhost:10000",
-					Server: "localhost:11000",
-				},
-				{
-					Client: "localhost:10001",
-					Server: "localhost:11001",
-				},
-				{
-					Client: "localhost:10002",
-					Server: "localhost:11002",
-				},
-			},
-			Users: []config.UserWithPassword{
-				{
-					1,
-					"user1",
-					"pass1",
-				},
-				{
-					2,
-					"test",
-					"test",
-				},
-			},
-			Debug:         false,
-			ShowInfosLogs: false,
-		},
-		{
-			Id: 1,
-			Servers: []config.ServerUrl{
-				{
-					Client: "localhost:10000",
-					Server: "localhost:11000",
-				},
-				{
-					Client: "localhost:10001",
-					Server: "localhost:11001",
-				},
-				{
-					Client: "localhost:10002",
-					Server: "localhost:11002",
-				},
-			},
-			Users: []config.UserWithPassword{
-				{
-					1,
-					"user1",
-					"pass1",
-				},
-				{
-					2,
-					"test",
-					"test",
-				},
-			},
-			Debug:         false,
-			ShowInfosLogs: false,
-		},
-		{
-			Id: 2,
-			Servers: []config.ServerUrl{
-				{
-					Client: "localhost:10000",
-					Server: "localhost:11000",
-				},
-				{
-					Client: "localhost:10001",
-					Server: "localhost:11001",
-				},
-				{
-					Client: "localhost:10002",
-					Server: "localhost:11002",
-				},
-			},
-			Users: []config.UserWithPassword{
-				{
-					1,
-					"user1",
-					"pass1",
-				},
-				{
-					2,
-					"test",
-					"test",
-				},
-			},
-			Debug:         false,
-			ShowInfosLogs: false,
-		},
-	}
-
-	validClientConfig := config.ClientConfiguration{
-		Servers: []string{
-			"localhost:10000",
-			"localhost:10001",
-			"localhost:10002",
-		},
-	}
-
 	t.Run("should connect to server", func(t *testing.T) {
-		startServers(validServerConfigs)
+		startServer()
 
 		conn, err := connect(validClientConfig.Servers[0])
-		t.Cleanup(func() {
-			_ = conn.Close()
-			for range validServerConfigs {
-				server.Stop()
-			}
-		})
+
 		expect(t, err, nil)
+
+		t.Cleanup(func() {
+			clean(conn)
+		})
 	})
 
 	t.Run("should create event", func(t *testing.T) {
-		startServers(validServerConfigs)
+		startServer()
+
 		conn, _ := connect(validClientConfig.Servers[0])
 		cli := client_server.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
 				Username: "user1",
 				Password: "pass1",
-			}
-		})
-		t.Cleanup(func() {
-			_ = conn.Close()
-			for range validServerConfigs {
-				server.Stop()
 			}
 		})
 
@@ -187,21 +118,20 @@ func TestSuccess(t *testing.T) {
 		expect(t, event.Jobs[0].Name, "Test")
 		expect(t, event.Jobs[0].Capacity, 2)
 		expect(t, event.Open, true)
+
+		t.Cleanup(func() {
+			clean(conn)
+		})
 	})
 
 	t.Run("should close event", func(t *testing.T) {
-		startServers(validServerConfigs)
+		startServer()
+
 		conn, _ := connect(validClientConfig.Servers[0])
 		cli := client_server.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
 				Username: "user1",
 				Password: "pass1",
-			}
-		})
-		t.Cleanup(func() {
-			_ = conn.Close()
-			for range validServerConfigs {
-				server.Stop()
 			}
 		})
 
@@ -227,21 +157,20 @@ func TestSuccess(t *testing.T) {
 
 		expect(t, responseError, nil)
 		expect(t, event.Open, false)
+
+		t.Cleanup(func() {
+			clean(conn)
+		})
 	})
 
 	t.Run("should register to event", func(t *testing.T) {
-		startServers(validServerConfigs)
+		startServer()
+
 		conn, _ := connect(validClientConfig.Servers[0])
 		cli := client_server.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
 				Username: "user1",
 				Password: "pass1",
-			}
-		})
-		t.Cleanup(func() {
-			_ = conn.Close()
-			for range validServerConfigs {
-				server.Stop()
 			}
 		})
 
@@ -270,21 +199,20 @@ func TestSuccess(t *testing.T) {
 		expect(t, event.Jobs[0].Capacity, 2)
 		expect(t, event.Jobs[0].Count, 1)
 		expect(t, event.Participants[0].JobId, 1)
+
+		t.Cleanup(func() {
+			clean(conn)
+		})
 	})
 
 	t.Run("should show all events", func(t *testing.T) {
-		startServers(validServerConfigs)
+		startServer()
+
 		conn, _ := connect(validClientConfig.Servers[0])
 		cli := client_server.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
 				Username: "user1",
 				Password: "pass1",
-			}
-		})
-		t.Cleanup(func() {
-			_ = conn.Close()
-			for range validServerConfigs {
-				server.Stop()
 			}
 		})
 
@@ -322,21 +250,20 @@ func TestSuccess(t *testing.T) {
 
 		expect(t, responseError, nil)
 		expect(t, len(event), 2)
+
+		t.Cleanup(func() {
+			clean(conn)
+		})
 	})
 
 	t.Run("should show one event", func(t *testing.T) {
-		startServers(validServerConfigs)
+		startServer()
+
 		conn, _ := connect(validClientConfig.Servers[0])
 		cli := client_server.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
 				Username: "user1",
 				Password: "pass1",
-			}
-		})
-		t.Cleanup(func() {
-			_ = conn.Close()
-			for range validServerConfigs {
-				server.Stop()
 			}
 		})
 
@@ -364,21 +291,20 @@ func TestSuccess(t *testing.T) {
 		expect(t, responseError, nil)
 		expect(t, event.Id, 1)
 		expect(t, event.Name, "Test new event")
+
+		t.Cleanup(func() {
+			clean(conn)
+		})
 	})
 
 	t.Run("should show one event resume", func(t *testing.T) {
-		startServers(validServerConfigs)
+		startServer()
+
 		conn, _ := connect(validClientConfig.Servers[0])
 		cli := client_server.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
 				Username: "user1",
 				Password: "pass1",
-			}
-		})
-		t.Cleanup(func() {
-			_ = conn.Close()
-			for range validServerConfigs {
-				server.Stop()
 			}
 		})
 
@@ -413,21 +339,20 @@ func TestSuccess(t *testing.T) {
 		expect(t, responseError, nil)
 		expect(t, event.Id, 1)
 		expect(t, event.Name, "Test new event")
+
+		t.Cleanup(func() {
+			clean(conn)
+		})
 	})
 
 	t.Run("should not have duplicate registration", func(t *testing.T) {
-		startServers(validServerConfigs)
+		startServer()
+
 		conn, _ := connect(validClientConfig.Servers[0])
 		cli := client_server.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
 				Username: "user1",
 				Password: "pass1",
-			}
-		})
-		t.Cleanup(func() {
-			_ = conn.Close()
-			for range validServerConfigs {
-				server.Stop()
 			}
 		})
 
@@ -461,8 +386,6 @@ func TestSuccess(t *testing.T) {
 			}
 		})
 
-		time.Sleep(32 * time.Millisecond)
-
 		json, _ := cli.SendRequest("show", func(auth client_server.AuthId) any {
 			return dto.EventShow{
 				EventId: 1,
@@ -474,124 +397,18 @@ func TestSuccess(t *testing.T) {
 
 		expect(t, responseError, nil)
 		expect(t, event.Participants[0].JobId, 2)
+
+		t.Cleanup(func() {
+			clean(conn)
+		})
 	})
 }
 
 func TestErrors(t *testing.T) {
-	validServerConfigs := []*config.ServerConfiguration{
-		{
-			Id: 0,
-			Servers: []config.ServerUrl{
-				{
-					Client: "localhost:10000",
-					Server: "localhost:11000",
-				},
-				{
-					Client: "localhost:10001",
-					Server: "localhost:11001",
-				},
-				{
-					Client: "localhost:10002",
-					Server: "localhost:11002",
-				},
-			},
-			Users: []config.UserWithPassword{
-				{
-					1,
-					"user1",
-					"pass1",
-				},
-				{
-					2,
-					"test",
-					"test",
-				},
-			},
-			Debug:         false,
-			ShowInfosLogs: false,
-		},
-		{
-			Id: 1,
-			Servers: []config.ServerUrl{
-				{
-					Client: "localhost:10000",
-					Server: "localhost:11000",
-				},
-				{
-					Client: "localhost:10001",
-					Server: "localhost:11001",
-				},
-				{
-					Client: "localhost:10002",
-					Server: "localhost:11002",
-				},
-			},
-			Users: []config.UserWithPassword{
-				{
-					1,
-					"user1",
-					"pass1",
-				},
-				{
-					2,
-					"test",
-					"test",
-				},
-			},
-			Debug:         false,
-			ShowInfosLogs: false,
-		},
-		{
-			Id: 2,
-			Servers: []config.ServerUrl{
-				{
-					Client: "localhost:10000",
-					Server: "localhost:11000",
-				},
-				{
-					Client: "localhost:10001",
-					Server: "localhost:11001",
-				},
-				{
-					Client: "localhost:10002",
-					Server: "localhost:11002",
-				},
-			},
-			Users: []config.UserWithPassword{
-				{
-					1,
-					"user1",
-					"pass1",
-				},
-				{
-					2,
-					"test",
-					"test",
-				},
-			},
-			Debug:         false,
-			ShowInfosLogs: false,
-		},
-	}
-
-	validClientConfig := config.ClientConfiguration{
-		Servers: []string{
-			"localhost:10000",
-			"localhost:10001",
-			"localhost:10002",
-		},
-	}
-
 	t.Run("should give error if invalid credentials", func(t *testing.T) {
-		startServers(validServerConfigs)
-		conn, _ := connect(validClientConfig.Servers[0])
+		startServer()
 
-		t.Cleanup(func() {
-			_ = conn.Close()
-			for range validServerConfigs {
-				server.Stop()
-			}
-		})
+		conn, _ := connect(validClientConfig.Servers[0])
 
 		cli := client_server.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
@@ -613,22 +430,20 @@ func TestErrors(t *testing.T) {
 		})
 
 		expectError(t, err, "invalid credentials")
+
+		t.Cleanup(func() {
+			clean(conn)
+		})
 	})
 
 	t.Run("should not register to a closed event", func(t *testing.T) {
-		startServers(validServerConfigs)
+		startServer()
+
 		conn, _ := connect(validClientConfig.Servers[0])
 		cli := client_server.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
 				Username: "user1",
 				Password: "pass1",
-			}
-		})
-
-		t.Cleanup(func() {
-			_ = conn.Close()
-			for range validServerConfigs {
-				server.Stop()
 			}
 		})
 
@@ -658,18 +473,16 @@ func TestErrors(t *testing.T) {
 
 		_, responseError := network.ParseResponse[*dto.Event](json)
 		expectError(t, responseError, "job not found")
+
+		t.Cleanup(func() {
+			clean(conn)
+		})
 	})
 
 	t.Run("should not close event if not organizer", func(t *testing.T) {
-		startServers(validServerConfigs)
-		conn, _ := connect(validClientConfig.Servers[0])
+		startServer()
 
-		t.Cleanup(func() {
-			_ = conn.Close()
-			for range validServerConfigs {
-				server.Stop()
-			}
-		})
+		conn, _ := connect(validClientConfig.Servers[0])
 
 		cli := client_server.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
@@ -706,22 +519,20 @@ func TestErrors(t *testing.T) {
 		_, responseError := network.ParseResponse[*dto.Event](json)
 
 		expectError(t, responseError, "you are not the organizer")
+
+		t.Cleanup(func() {
+			clean(conn)
+		})
 	})
 
 	t.Run("should not close event if already closed", func(t *testing.T) {
-		startServers(validServerConfigs)
+		startServer()
+
 		conn, _ := connect(validClientConfig.Servers[0])
 		cli := client_server.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
 				Username: "user1",
 				Password: "pass1",
-			}
-		})
-
-		t.Cleanup(func() {
-			_ = conn.Close()
-			for range validServerConfigs {
-				server.Stop()
 			}
 		})
 
@@ -752,18 +563,16 @@ func TestErrors(t *testing.T) {
 		_, responseError := network.ParseResponse[*dto.Event](json)
 
 		expectError(t, responseError, "event already closed")
+
+		t.Cleanup(func() {
+			clean(conn)
+		})
 	})
 
 	t.Run("should not show if event does not exist", func(t *testing.T) {
-		startServers(validServerConfigs)
-		conn, _ := connect(validClientConfig.Servers[0])
+		startServer()
 
-		t.Cleanup(func() {
-			_ = conn.Close()
-			for range validServerConfigs {
-				server.Stop()
-			}
-		})
+		conn, _ := connect(validClientConfig.Servers[0])
 
 		cli := client_server.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
@@ -782,18 +591,16 @@ func TestErrors(t *testing.T) {
 		_, responseError := network.ParseResponse[*dto.Event](json)
 
 		expectError(t, responseError, "event not found")
+
+		t.Cleanup(func() {
+			clean(conn)
+		})
 	})
 
 	t.Run("should have error if empty event name", func(t *testing.T) {
-		startServers(validServerConfigs)
-		conn, _ := connect(validClientConfig.Servers[0])
+		startServer()
 
-		t.Cleanup(func() {
-			_ = conn.Close()
-			for range validServerConfigs {
-				server.Stop()
-			}
-		})
+		conn, _ := connect(validClientConfig.Servers[0])
 
 		cli := client_server.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
@@ -817,18 +624,16 @@ func TestErrors(t *testing.T) {
 		_, responseError := network.ParseResponse[*dto.Event](json)
 
 		expectError(t, responseError, "name is required")
+
+		t.Cleanup(func() {
+			clean(conn)
+		})
 	})
 
 	t.Run("should have error if empty job name", func(t *testing.T) {
-		startServers(validServerConfigs)
-		conn, _ := connect(validClientConfig.Servers[0])
+		startServer()
 
-		t.Cleanup(func() {
-			_ = conn.Close()
-			for range validServerConfigs {
-				server.Stop()
-			}
-		})
+		conn, _ := connect(validClientConfig.Servers[0])
 
 		cli := client_server.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
@@ -852,18 +657,16 @@ func TestErrors(t *testing.T) {
 		_, responseError := network.ParseResponse[*dto.Event](json)
 
 		expectError(t, responseError, "name is required")
+
+		t.Cleanup(func() {
+			clean(conn)
+		})
 	})
 
 	t.Run("should have error if empty job capacity", func(t *testing.T) {
-		startServers(validServerConfigs)
-		conn, _ := connect(validClientConfig.Servers[0])
+		startServer()
 
-		t.Cleanup(func() {
-			_ = conn.Close()
-			for range validServerConfigs {
-				server.Stop()
-			}
-		})
+		conn, _ := connect(validClientConfig.Servers[0])
 
 		cli := client_server.CreateClientProtocol(conn, func() types.Credentials {
 			return types.Credentials{
@@ -887,449 +690,10 @@ func TestErrors(t *testing.T) {
 		_, responseError := network.ParseResponse[*dto.Event](json)
 
 		expectError(t, responseError, "capacity must be greater than 0")
-	})
-
-}
-func TestReplication(t *testing.T) {
-	validServerConfigs := []*config.ServerConfiguration{
-		{
-			Id: 0,
-			Servers: []config.ServerUrl{
-				{
-					Client: "localhost:10000",
-					Server: "localhost:11000",
-				},
-				{
-					Client: "localhost:10001",
-					Server: "localhost:11001",
-				},
-				{
-					Client: "localhost:10002",
-					Server: "localhost:11002",
-				},
-			},
-			Users: []config.UserWithPassword{
-				{
-					1,
-					"user1",
-					"pass1",
-				},
-				{
-					2,
-					"test",
-					"test",
-				},
-			},
-			Debug:         false,
-			ShowInfosLogs: false,
-		},
-		{
-			Id: 1,
-			Servers: []config.ServerUrl{
-				{
-					Client: "localhost:10000",
-					Server: "localhost:11000",
-				},
-				{
-					Client: "localhost:10001",
-					Server: "localhost:11001",
-				},
-				{
-					Client: "localhost:10002",
-					Server: "localhost:11002",
-				},
-			},
-			Users: []config.UserWithPassword{
-				{
-					1,
-					"user1",
-					"pass1",
-				},
-				{
-					2,
-					"test",
-					"test",
-				},
-			},
-			Debug:         false,
-			ShowInfosLogs: false,
-		},
-		{
-			Id: 2,
-			Servers: []config.ServerUrl{
-				{
-					Client: "localhost:10000",
-					Server: "localhost:11000",
-				},
-				{
-					Client: "localhost:10001",
-					Server: "localhost:11001",
-				},
-				{
-					Client: "localhost:10002",
-					Server: "localhost:11002",
-				},
-			},
-			Users: []config.UserWithPassword{
-				{
-					1,
-					"user1",
-					"pass1",
-				},
-				{
-					2,
-					"test",
-					"test",
-				},
-			},
-			Debug:         false,
-			ShowInfosLogs: false,
-		},
-	}
-
-	validClientConfig := config.ClientConfiguration{
-		Servers: []string{
-			"localhost:10000",
-			"localhost:10001",
-			"localhost:10002",
-		},
-	}
-	// Test replication of data
-	t.Run("should replicate changes when creating event", func(t *testing.T) {
-		startServers(validServerConfigs)
-
-		conn1, _ := connect(validClientConfig.Servers[0])
-		conn2, _ := connect(validClientConfig.Servers[1])
-		conn3, _ := connect(validClientConfig.Servers[2])
-
-		cli1 := client_server.CreateClientProtocol(conn1, func() types.Credentials {
-			return types.Credentials{
-				Username: "user1",
-				Password: "pass1",
-			}
-		})
-
-		cli2 := client_server.CreateClientProtocol(conn2, func() types.Credentials {
-			return types.Credentials{
-				Username: "user1",
-				Password: "pass1",
-			}
-		})
-
-		cli3 := client_server.CreateClientProtocol(conn3, func() types.Credentials {
-			return types.Credentials{
-				Username: "user1",
-				Password: "pass1",
-			}
-		})
 
 		t.Cleanup(func() {
-			_ = conn1.Close()
-			_ = conn2.Close()
-			_ = conn3.Close()
-			for range validServerConfigs {
-				server.Stop()
-			}
+			clean(conn)
 		})
-
-		_, _ = cli1.SendRequest("create", func(auth client_server.AuthId) any {
-			return dto.EventCreate{
-				Name: "Test new event",
-				Jobs: []dto.Job{
-					{
-						Name:     "Test",
-						Capacity: 2,
-					},
-				},
-			}
-		})
-
-		jsonCli2, _ := cli2.SendRequest("show", func(auth client_server.AuthId) any {
-			return dto.EventShow{
-				EventId: 1,
-				Resume:  false,
-			}
-		})
-
-		jsonCli3, _ := cli3.SendRequest("show", func(auth client_server.AuthId) any {
-			return dto.EventShow{
-				EventId: 1,
-				Resume:  false,
-			}
-		})
-
-		expect(t, jsonCli2, "{\"success\":true,\"data\":{\"id\":1,\"name\":\"Test new event\",\"open\":true,\"jobs\":[{\"id\":1,\"name\":\"Test\",\"capacity\":2,\"count\":0}],\"organizer\":{\"id\":1,\"username\":\"user1\"},\"participants\":[]}}")
-		expect(t, jsonCli3, "{\"success\":true,\"data\":{\"id\":1,\"name\":\"Test new event\",\"open\":true,\"jobs\":[{\"id\":1,\"name\":\"Test\",\"capacity\":2,\"count\":0}],\"organizer\":{\"id\":1,\"username\":\"user1\"},\"participants\":[]}}")
 	})
 
-	t.Run("should replicate changes when closing event", func(t *testing.T) {
-		startServers(validServerConfigs)
-
-		conn1, _ := connect(validClientConfig.Servers[0])
-		conn2, _ := connect(validClientConfig.Servers[1])
-		conn3, _ := connect(validClientConfig.Servers[2])
-
-		cli1 := client_server.CreateClientProtocol(conn1, func() types.Credentials {
-			return types.Credentials{
-				Username: "user1",
-				Password: "pass1",
-			}
-		})
-
-		cli2 := client_server.CreateClientProtocol(conn2, func() types.Credentials {
-			return types.Credentials{
-				Username: "user1",
-				Password: "pass1",
-			}
-		})
-
-		cli3 := client_server.CreateClientProtocol(conn3, func() types.Credentials {
-			return types.Credentials{
-				Username: "user1",
-				Password: "pass1",
-			}
-		})
-
-		t.Cleanup(func() {
-			_ = conn1.Close()
-			_ = conn2.Close()
-			_ = conn3.Close()
-			for range validServerConfigs {
-				server.Stop()
-			}
-		})
-
-		_, _ = cli1.SendRequest("create", func(auth client_server.AuthId) any {
-			return dto.EventCreate{
-				Name: "Test new event",
-				Jobs: []dto.Job{
-					{
-						Name:     "Test",
-						Capacity: 2,
-					},
-				},
-			}
-		})
-
-		_, _ = cli2.SendRequest("close", func(auth client_server.AuthId) any {
-			return dto.EventClose{
-				EventId: 1,
-			}
-		})
-
-		jsonCli2, _ := cli2.SendRequest("show", func(auth client_server.AuthId) any {
-			return dto.EventShow{
-				EventId: 1,
-				Resume:  false,
-			}
-		})
-
-		jsonCli3, _ := cli3.SendRequest("show", func(auth client_server.AuthId) any {
-			return dto.EventShow{
-				EventId: 1,
-				Resume:  false,
-			}
-		})
-
-		expect(t, jsonCli2, "{\"success\":true,\"data\":{\"id\":1,\"name\":\"Test new event\",\"open\":false,\"jobs\":[{\"id\":1,\"name\":\"Test\",\"capacity\":2,\"count\":0}],\"organizer\":{\"id\":1,\"username\":\"user1\"},\"participants\":[]}}")
-		expect(t, jsonCli3, "{\"success\":true,\"data\":{\"id\":1,\"name\":\"Test new event\",\"open\":false,\"jobs\":[{\"id\":1,\"name\":\"Test\",\"capacity\":2,\"count\":0}],\"organizer\":{\"id\":1,\"username\":\"user1\"},\"participants\":[]}}")
-	})
-
-	t.Run("should replicate changes when register to event", func(t *testing.T) {
-		startServers(validServerConfigs)
-
-		conn1, _ := connect(validClientConfig.Servers[0])
-		conn2, _ := connect(validClientConfig.Servers[1])
-		conn3, _ := connect(validClientConfig.Servers[2])
-
-		cli1 := client_server.CreateClientProtocol(conn1, func() types.Credentials {
-			return types.Credentials{
-				Username: "user1",
-				Password: "pass1",
-			}
-		})
-
-		cli2 := client_server.CreateClientProtocol(conn2, func() types.Credentials {
-			return types.Credentials{
-				Username: "test",
-				Password: "test",
-			}
-		})
-
-		cli3 := client_server.CreateClientProtocol(conn3, func() types.Credentials {
-			return types.Credentials{
-				Username: "user1",
-				Password: "pass1",
-			}
-		})
-
-		t.Cleanup(func() {
-			_ = conn1.Close()
-			_ = conn2.Close()
-			_ = conn3.Close()
-			for range validServerConfigs {
-				server.Stop()
-			}
-		})
-
-		_, _ = cli1.SendRequest("create", func(auth client_server.AuthId) any {
-			return dto.EventCreate{
-				Name: "Test new event",
-				Jobs: []dto.Job{
-					{
-						Name:     "Test",
-						Capacity: 4,
-					},
-				},
-			}
-		})
-
-		_, _ = cli1.SendRequest("register", func(auth client_server.AuthId) any {
-			return dto.EventRegister{
-				EventId: 1,
-				JobId:   1,
-			}
-		})
-
-		_, _ = cli2.SendRequest("register", func(auth client_server.AuthId) any {
-			return dto.EventRegister{
-				EventId: 1,
-				JobId:   1,
-			}
-		})
-
-		jsonCli3, _ := cli3.SendRequest("show", func(auth client_server.AuthId) any {
-			return dto.EventShow{
-				EventId: 1,
-				Resume:  true,
-			}
-		})
-
-		ev, _ := network.ParseResponse[*dto.Event](jsonCli3)
-
-		expect(t, ev.Jobs[0].Id, 1)
-		expect(t, ev.Jobs[0].Name, "Test")
-		expect(t, ev.Jobs[0].Count, 2)
-		expect(t, len(ev.Participants), 2)
-	})
-
-	t.Run("Should have coherent replication when mutiple critical requests", func(t *testing.T) {
-		startServers(validServerConfigs)
-
-		conn1, _ := connect(validClientConfig.Servers[0])
-		conn2, _ := connect(validClientConfig.Servers[1])
-		conn3, _ := connect(validClientConfig.Servers[2])
-
-		cli1 := client_server.CreateClientProtocol(conn1, func() types.Credentials {
-			return types.Credentials{
-				Username: "user1",
-				Password: "pass1",
-			}
-		})
-
-		cli2 := client_server.CreateClientProtocol(conn2, func() types.Credentials {
-			return types.Credentials{
-				Username: "test",
-				Password: "test",
-			}
-		})
-
-		cli3 := client_server.CreateClientProtocol(conn3, func() types.Credentials {
-			return types.Credentials{
-				Username: "user1",
-				Password: "pass1",
-			}
-		})
-
-		t.Cleanup(func() {
-			_ = conn1.Close()
-			_ = conn2.Close()
-			_ = conn3.Close()
-			for range validServerConfigs {
-				server.Stop()
-			}
-		})
-
-		_, _ = cli1.SendRequest("create", func(auth client_server.AuthId) any {
-			return dto.EventCreate{
-				Name: "Test new event",
-				Jobs: []dto.Job{
-					{
-						Name:     "Test",
-						Capacity: 4,
-					},
-				},
-			}
-		})
-
-		_, _ = cli2.SendRequest("create", func(auth client_server.AuthId) any {
-			return dto.EventCreate{
-				Name: "Test 2",
-				Jobs: []dto.Job{
-					{
-						Name:     "job",
-						Capacity: 412,
-					},
-				},
-			}
-		})
-
-		_, _ = cli3.SendRequest("create", func(auth client_server.AuthId) any {
-			return dto.EventCreate{
-				Name: "Event 3",
-				Jobs: []dto.Job{
-					{
-						Name:     "Blabla",
-						Capacity: 11,
-					},
-				},
-			}
-		})
-
-		time.Sleep(50 * time.Millisecond)
-
-		eventShow, _ := cli3.SendRequest("show", func(auth client_server.AuthId) any {
-			return dto.EventShow{
-				EventId: -1,
-				Resume:  false,
-			}
-		})
-
-		expect(t, eventShow, "{\"success\":true,\"data\":[{\"id\":1,\"name\":\"Test new event\",\"open\":true,\"jobs\":[{\"id\":1,\"name\":\"Test\",\"capacity\":4,\"count\":0}],\"organizer\":{\"id\":1,\"username\":\"user1\"},\"participants\":[]},{\"id\":2,\"name\":\"Test 2\",\"open\":true,\"jobs\":[{\"id\":1,\"name\":\"job\",\"capacity\":412,\"count\":0}],\"organizer\":{\"id\":2,\"username\":\"test\"},\"participants\":[]},{\"id\":3,\"name\":\"Event 3\",\"open\":true,\"jobs\":[{\"id\":1,\"name\":\"Blabla\",\"capacity\":11,\"count\":0}],\"organizer\":{\"id\":1,\"username\":\"user1\"},\"participants\":[]}]}")
-
-		_, _ = cli1.SendRequest("register", func(auth client_server.AuthId) any {
-			return dto.EventRegister{
-				EventId: 1,
-				JobId:   1,
-			}
-		})
-
-		_, _ = cli3.SendRequest("close", func(auth client_server.AuthId) any {
-			return dto.EventRegister{
-				EventId: 1,
-			}
-		})
-
-		_, _ = cli1.SendRequest("close", func(auth client_server.AuthId) any {
-			return dto.EventRegister{
-				EventId: 3,
-			}
-		})
-
-		eventShow, _ = cli1.SendRequest("show", func(auth client_server.AuthId) any {
-			return dto.EventShow{
-				EventId: -1,
-				Resume:  false,
-			}
-		})
-
-		expect(t, eventShow, "{\"success\":true,\"data\":[{\"id\":1,\"name\":\"Test new event\",\"open\":false,\"jobs\":[{\"id\":1,\"name\":\"Test\",\"capacity\":4,\"count\":1}],\"organizer\":{\"id\":1,\"username\":\"user1\"},\"participants\":[{\"user\":{\"id\":1,\"username\":\"user1\"},\"jobId\":1}]},{\"id\":2,\"name\":\"Test 2\",\"open\":true,\"jobs\":[{\"id\":1,\"name\":\"job\",\"capacity\":412,\"count\":0}],\"organizer\":{\"id\":2,\"username\":\"test\"},\"participants\":[]},{\"id\":3,\"name\":\"Event 3\",\"open\":false,\"jobs\":[{\"id\":1,\"name\":\"Blabla\",\"capacity\":11,\"count\":0}],\"organizer\":{\"id\":1,\"username\":\"user1\"},\"participants\":[]}]}")
-	})
-}
-
-func startServers(servers []*config.ServerConfiguration) {
-	for _, conf := range servers {
-		go server.Start(conf)
-		time.Sleep(30 * time.Millisecond) // Time for the previous server to boot up
-	}
 }
