@@ -85,6 +85,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 		},
 	)
 
+	// Register endpoints
 	protocol.AddEndpoint("create", createEndpoint(&protocol, &appData, &lmpt))
 	protocol.AddEndpoint("show", showEndpoint(&protocol, &appData))
 	protocol.AddEndpoint("close", closeEndpoint(&protocol, &appData, &lmpt))
@@ -205,7 +206,7 @@ func closeEndpoint(protocol *client_server.ServerProtocol, appData *Data, lmpt *
 			}()
 			select {
 			case <-lmpt.SendClientAskCriticalSection():
-				protocol.ProcessPriorityRequests()
+				protocol.ProcessPriorityRequests() // Check if there are any pending requests
 				for i, ev := range appData.events {
 					if ev.Id == data.EventId {
 						if ev.OrganizerId != request.Header.AuthId {
@@ -237,7 +238,7 @@ func registerEndpoint(protocol *client_server.ServerProtocol, appData *Data, lmp
 			}()
 			select {
 			case <-lmpt.SendClientAskCriticalSection():
-				protocol.ProcessPriorityRequests()
+				protocol.ProcessPriorityRequests() // Check if there are any pending requests
 				for _, ev := range appData.events {
 					if ev.Id == data.EventId {
 						if err := ev.Register(request.Header.AuthId, data.JobId); err != nil {

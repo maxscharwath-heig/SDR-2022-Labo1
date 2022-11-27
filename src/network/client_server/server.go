@@ -54,10 +54,14 @@ func CreateServerProtocol(authFunc AuthFunc) ServerProtocol {
 	}
 }
 
+// AddEndpoint
+// Add an endpoint to the server protocol
 func (p ServerProtocol) AddEndpoint(endpointId string, endpoint ServerEndpoint) {
 	p.Endpoints[endpointId] = endpoint
 }
 
+// ProcessPriorityRequests
+// Process all the pending priority requests ( used to sync data )
 func (p ServerProtocol) ProcessPriorityRequests() {
 	for {
 		select {
@@ -69,18 +73,22 @@ func (p ServerProtocol) ProcessPriorityRequests() {
 	}
 }
 
+// ProcessRequests
+// Process all the pending requests ( used to sync data )
 func (p ServerProtocol) ProcessRequests() {
 	for {
 		select {
-		case pending := <-p.pendingRequest:
-			p.ProcessPriorityRequests()
+		case pending := <-p.pendingRequest: // Process the pending requests
+			p.ProcessPriorityRequests() // Process the priority requests
 			utils.CreateCriticalSection(fmt.Sprintf("sync %s", pending.name), pending.callback)
 		default:
-			p.ProcessPriorityRequests()
+			p.ProcessPriorityRequests() // Process the priority requests
 		}
 	}
 }
 
+// AddPending
+// Add a pending request can have a priority to be processed first ( used to sync data )
 func (p ServerProtocol) AddPending(name string, priority bool, callback func()) {
 	if priority {
 		p.pendingPriorityRequest <- pendingRequest{name, callback}
@@ -108,7 +116,7 @@ func (p ServerProtocol) HandleConnection(c net.Conn) {
 		}
 
 		select {
-		case <-ready:
+		case <-ready: // A request can be handled ( Only one at a time )
 
 			request := network.Request[HeaderResponse]{Conn: c}
 
@@ -134,14 +142,14 @@ func (p ServerProtocol) HandleConnection(c net.Conn) {
 				utils.LogWarning(false, "invalid endpoint, canceling request")
 				continue
 			}
-
+			// Process the authentication in a critical section
 			go p.AddPending(fmt.Sprintf("Request %s (auth)", request.EndpointId), false, func() {
 				if request.Header.NeedsAuth {
 					var credentials types.Credentials
 
 					if e := conn.GetJson(&credentials); e != nil {
 						utils.LogWarning(false, "error while receiving credentials", e)
-						ready <- struct{}{}
+						ready <- struct{}{} // The request is finished
 						return
 					}
 
@@ -149,20 +157,21 @@ func (p ServerProtocol) HandleConnection(c net.Conn) {
 
 					if e := conn.SendJSON(AuthResponse{Success: isValid, Auth: auth}); e != nil {
 						utils.LogWarning(false, "error while sending auth response", e)
-						ready <- struct{}{}
+						ready <- struct{}{} // The request is finished
 						return
 					}
 
 					request.Header.AuthId = auth
 					if !isValid {
 						utils.LogWarning(false, "invalid credentials, canceling request")
-						ready <- struct{}{}
+						ready <- struct{}{} // The request is done
 						return
 					}
 				}
+				// Process the request in a critical section in the pending channel
 				go p.AddPending(fmt.Sprintf("Request %s (data)", request.EndpointId), false, func() {
 					defer func() {
-						ready <- struct{}{}
+						ready <- struct{}{} // The request is done
 					}()
 					if data, e := conn.GetLine(); e != nil {
 						utils.LogWarning(false, "error while receiving data", e)
