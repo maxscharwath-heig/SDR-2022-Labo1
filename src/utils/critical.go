@@ -28,7 +28,8 @@ func CreateCriticalSection(name string, callback func()) {
 	id := hex.EncodeToString(b)
 
 	Log(true, fmt.Sprintf("CRITIC START [%s]", id), colors.BackgroundRed, fmt.Sprintf("🔒%s", name))
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second * 3)
 	callback()
+	time.Sleep(time.Second * 3)
 	Log(true, fmt.Sprintf("CRITIC END   [%s]", id), colors.BackgroundRed, fmt.Sprintf("🔓%s", name))
 }

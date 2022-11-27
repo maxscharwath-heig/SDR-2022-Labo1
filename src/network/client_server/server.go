@@ -45,16 +45,20 @@ type ServerProtocol struct {
 	pendingPriorityRequest chan pendingRequest
 }
 
-func CreateServerProtocol(authFunc AuthFunc, endpoints map[string]ServerEndpoint) ServerProtocol {
+func CreateServerProtocol(authFunc AuthFunc) ServerProtocol {
 	return ServerProtocol{
 		AuthFunc:               authFunc,
-		Endpoints:              endpoints,
+		Endpoints:              make(map[string]ServerEndpoint),
 		pendingRequest:         make(chan pendingRequest),
 		pendingPriorityRequest: make(chan pendingRequest),
 	}
 }
 
-func (p ServerProtocol) processPriorityRequests() {
+func (p ServerProtocol) AddEndpoint(endpointId string, endpoint ServerEndpoint) {
+	p.Endpoints[endpointId] = endpoint
+}
+
+func (p ServerProtocol) ProcessPriorityRequests() {
 	for {
 		select {
 		case pending := <-p.pendingPriorityRequest:
@@ -69,10 +73,10 @@ func (p ServerProtocol) ProcessRequests() {
 	for {
 		select {
 		case pending := <-p.pendingRequest:
-			p.processPriorityRequests()
+			p.ProcessPriorityRequests()
 			utils.CreateCriticalSection(fmt.Sprintf("sync %s", pending.name), pending.callback)
 		default:
-			p.processPriorityRequests()
+			p.ProcessPriorityRequests()
 		}
 	}
 }

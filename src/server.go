@@ -83,13 +83,12 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 
 			return false, -1
 		},
-		map[string]client_server.ServerEndpoint{
-			"create":   createEndpoint(&appData, &lmpt),
-			"show":     showEndpoint(&appData),
-			"close":    closeEndpoint(&appData, &lmpt),
-			"register": registerEndpoint(&appData, &lmpt),
-		},
 	)
+
+	protocol.AddEndpoint("create", createEndpoint(&protocol, &appData, &lmpt))
+	protocol.AddEndpoint("show", showEndpoint(&protocol, &appData))
+	protocol.AddEndpoint("close", closeEndpoint(&protocol, &appData, &lmpt))
+	protocol.AddEndpoint("register", registerEndpoint(&protocol, &appData, &lmpt))
 
 	go func() {
 		for {
@@ -123,7 +122,7 @@ func Start(serverConfiguration *config.ServerConfiguration) {
 type request = network.Request[client_server.HeaderResponse]
 
 // createEndpoint Registers a custom endpoint accessible on the server
-func createEndpoint(appData *Data, lmpt *lamport.Lamport[[]dto.Event]) client_server.ServerEndpoint {
+func createEndpoint(protocol *client_server.ServerProtocol, appData *Data, lmpt *lamport.Lamport[[]dto.Event]) client_server.ServerEndpoint {
 	return client_server.ServerEndpoint{
 		NeedsAuth: true,
 		HandlerFunc: func(request request) network.Response[any] {
@@ -158,14 +157,14 @@ func createEndpoint(appData *Data, lmpt *lamport.Lamport[[]dto.Event]) client_se
 					Capacity: job.Capacity,
 				}
 			}
-			events := appData.events
 			defer func() {
-				lmpt.SendClientReleaseCriticalSection(EventsToDTO(events, appData))
+				lmpt.SendClientReleaseCriticalSection(EventsToDTO(appData.events, appData))
 			}()
 			select {
 			case <-lmpt.SendClientAskCriticalSection():
-				event.Id = len(events) + 1
-				events = append(events, event)
+				protocol.ProcessPriorityRequests()
+				event.Id = len(appData.events) + 1
+				appData.events = append(appData.events, event)
 				return network.CreateResponse(true, EventToDTO(event, appData))
 			}
 		},
@@ -173,42 +172,41 @@ func createEndpoint(appData *Data, lmpt *lamport.Lamport[[]dto.Event]) client_se
 }
 
 // showEndpoint defines an endpoint that displays events
-func showEndpoint(appData *Data) client_server.ServerEndpoint {
+func showEndpoint(protocol *client_server.ServerProtocol, appData *Data) client_server.ServerEndpoint {
 	return client_server.ServerEndpoint{
 		NeedsAuth: false,
 		HandlerFunc: func(request request) network.Response[any] {
 			data := dto.EventShow{}
 			request.GetJson(&data)
-
-			events := appData.events
+			protocol.ProcessPriorityRequests()
 			if data.EventId != -1 {
-				for _, ev := range events {
+				for _, ev := range appData.events {
 					if ev.Id == data.EventId {
 						return network.CreateResponse(true, EventToDTO(ev, appData))
 					}
 				}
 				return network.CreateResponse(false, "event not found")
 			}
-			return network.CreateResponse(true, EventsToDTO(events, appData))
+			return network.CreateResponse(true, EventsToDTO(appData.events, appData))
 		},
 	}
 }
 
 // closeEndpoint defines an endpoint that closes events
-func closeEndpoint(appData *Data, lmpt *lamport.Lamport[[]dto.Event]) client_server.ServerEndpoint {
+func closeEndpoint(protocol *client_server.ServerProtocol, appData *Data, lmpt *lamport.Lamport[[]dto.Event]) client_server.ServerEndpoint {
 	return client_server.ServerEndpoint{
 		NeedsAuth: true,
 		HandlerFunc: func(request request) network.Response[any] {
 			data := dto.EventClose{}
 			request.GetJson(&data)
 
-			events := appData.events
 			defer func() {
-				lmpt.SendClientReleaseCriticalSection(EventsToDTO(events, appData))
+				lmpt.SendClientReleaseCriticalSection(EventsToDTO(appData.events, appData))
 			}()
 			select {
 			case <-lmpt.SendClientAskCriticalSection():
-				for i, ev := range events {
+				protocol.ProcessPriorityRequests()
+				for i, ev := range appData.events {
 					if ev.Id == data.EventId {
 						if ev.OrganizerId != request.Header.AuthId {
 							return network.CreateResponse(false, "you are not the organizer")
@@ -216,8 +214,8 @@ func closeEndpoint(appData *Data, lmpt *lamport.Lamport[[]dto.Event]) client_ser
 						if !ev.Open {
 							return network.CreateResponse(false, "event already closed")
 						}
-						events[i].Open = false
-						return network.CreateResponse(true, EventToDTO(events[i], appData))
+						appData.events[i].Open = false
+						return network.CreateResponse(true, EventToDTO(appData.events[i], appData))
 					}
 				}
 				return network.CreateResponse(false, "event not found")
@@ -227,20 +225,20 @@ func closeEndpoint(appData *Data, lmpt *lamport.Lamport[[]dto.Event]) client_ser
 }
 
 // registerEndpoint defines an endpoint that register user to events
-func registerEndpoint(appData *Data, lmpt *lamport.Lamport[[]dto.Event]) client_server.ServerEndpoint {
+func registerEndpoint(protocol *client_server.ServerProtocol, appData *Data, lmpt *lamport.Lamport[[]dto.Event]) client_server.ServerEndpoint {
 	return client_server.ServerEndpoint{
 		NeedsAuth: true,
 		HandlerFunc: func(request request) network.Response[any] {
 			data := dto.EventRegister{}
 			request.GetJson(&data)
 
-			events := appData.events
 			defer func() {
-				lmpt.SendClientReleaseCriticalSection(EventsToDTO(events, appData))
+				lmpt.SendClientReleaseCriticalSection(EventsToDTO(appData.events, appData))
 			}()
 			select {
 			case <-lmpt.SendClientAskCriticalSection():
-				for _, ev := range events {
+				protocol.ProcessPriorityRequests()
+				for _, ev := range appData.events {
 					if ev.Id == data.EventId {
 						if err := ev.Register(request.Header.AuthId, data.JobId); err != nil {
 							return network.CreateResponse(false, err.Error())
