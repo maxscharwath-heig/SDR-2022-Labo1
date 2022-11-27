@@ -51,14 +51,14 @@ La configuration du client se trouve dans [`client.json`](./client.json):
 > `go run server.go --id 1` \
 > `go run server.go --id 2`
 
-Les serveur attendra des connexions sur le port TCP configuré dans `server.json` et attendrons d'être tous inter-connecté avant d'accepter les connexions clients.
+Les serveurs attendront des connexions sur leur port TCP configuré dans `server.json` et attendront d'être tous interconnectés avant d'accepter les connexions clients.
 
 ### Lancer un client (directement, ou via un exécutable)
 
 > `go run client.go`
 
-Le client se demandera sur quel serveur se connecter (il faut entrer l'addresse complète du serveur, par exemple `localhost:10000`).
-Sinon, en appuyant simplement sur entrée, par défaut il se connectera à un serveur aléatoire.
+Le client se demandera sur quel serveur se connecter (il faut entrer l'adresse complète du serveur, par exemple `localhost:10000`).
+Sinon, en appuyant simplement sur entrée, il se connectera par défaut à un serveur aléatoire.
 
 ### Liste de commandes disponible
 
@@ -133,7 +133,8 @@ L'exclusion mutuelle est garantie par l'algorithme de Lamport.
 
 > **Attention**
 > Lamport est utilisé uniquement lors de demande d'écriture, la commande show se base sur les données reçues lors de la dernière
-> synchronisation (donc supposée à jour).
+> synchronisation (donc supposée à jour). Cette commande n'utilise donc pas le mécanisme de lamport, mais utilise quand meme une
+> SC interne (serveur).
 
 ## Tests
 
@@ -228,6 +229,13 @@ Client 2 connecté au serveur 2 : s'inscrit à l'événement 2
 > T:26 SC:false	ACK(20)		REQ(24)		ACK(25) \
 > T:27 SC:false	ACK(25)		REQ(24)		ACK(25) \
 > T:28 SC:true	ACK(25)		REL(28)		ACK(25)
+
+#### Scéanarios avec accès concurrents
+
+Dans ce scenario deux clients essayent de fermer un événement en même temps.
+
+Client 1 (serveur 1) envoie un `close` et client 2 (serveur 2) envoie un `close` rapidement presque en même temps.
+On peut observer que la demande du client 1 est traitée, le client deux se voir refuser la fermeture (déjà fermée).
 
 ## Limitations
 
